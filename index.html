@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Text-to-Speech Pro Assistant</title>
+    <title>文字朗讀助理 Pro</title>
     <style>
         :root {
             --bg-color: #f5f5f7;
@@ -42,11 +42,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100dvh; /* 鎖定全螢幕高度 */
+            height: 100dvh;
             margin: 0;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             box-sizing: border-box;
-            overflow: hidden; /* 嚴禁 body 出現捲軸，避免把按鈕擠掉 */
+            overflow: hidden;
         }
 
         .container {
@@ -58,7 +58,7 @@
             max-width: 800px;
             display: flex;
             flex-direction: column;
-            height: calc(100% - 20px); /* 保留邊距，強制不超出螢幕 */
+            height: calc(100% - 20px);
             max-height: 100%;
             box-sizing: border-box;
             margin: 10px;
@@ -66,7 +66,7 @@
 
         .text-area-container {
             flex-grow: 1;
-            overflow-y: auto; /* 只有文字區域可以上下滑動 */
+            overflow-y: auto;
             margin-bottom: 15px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
@@ -97,12 +97,13 @@
             background-color: var(--container-bg); color: var(--text-color);
         }
 
+        /* 影片中的 6 宮格按鈕排版 */
         .controls-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 10px;
             margin-bottom: 15px;
-            flex-shrink: 0; /* 禁止按鈕區塊被壓縮 */
+            flex-shrink: 0;
         }
 
         button {
@@ -118,9 +119,14 @@
 
         #btnPlay { grid-column: 1 / 2; }
         #btnPause { grid-column: 2 / 3; }
-        #btnResume { grid-column: 3 / 4; }
-        #btnRewind { grid-column: 1 / 3; } 
-        #btnEdit { grid-column: 3 / 4; background-color: #d32f2f; color: white; } /* 將返回按鈕標紅，作為緊急停止用 */
+        #btnStop { grid-column: 3 / 4; background-color: #d32f2f; color: white; }
+        #btnRewind { grid-column: 1 / 2; } 
+        #btnResume { grid-column: 2 / 3; }
+        #btnEdit { grid-column: 3 / 4; background-color: #f0f0f0; color: #333; border: 1px solid #ccc; }
+
+        @media (prefers-color-scheme: dark) {
+            #btnEdit { background-color: #3a3a3c; color: #fff; border: 1px solid #555; }
+        }
 
         .slider-container {
             display: flex; align-items: center; justify-content: space-between;
@@ -143,18 +149,21 @@
         <select id="voiceSelect"><option value="">載入中...</option></select>
     </div>
     <div class="text-area-container" id="textContainer">
-        <textarea id="textInput" placeholder="請在此貼上文字..."></textarea>
+        <textarea id="textInput" placeholder="請在此貼上妳的小說內容..."></textarea>
         <div id="readDisplay"></div>
     </div>
+    
     <div class="controls-buttons">
         <button id="btnPlay">播放/導讀</button>
         <button id="btnPause" disabled>暫停</button>
+        <button id="btnStop" disabled>停止</button>
+        <button id="btnRewind" disabled>上一句</button>
         <button id="btnResume" disabled>繼續</button>
-        <button id="btnRewind" disabled>回溯</button>
-        <button id="btnEdit">停止與編輯</button>
+        <button id="btnEdit">返回編輯</button>
     </div>
+
     <div class="slider-container">
-        <label>基準語速：</label>
+        <label>語速：</label>
         <input type="range" id="speedRange" min="0.5" max="3.0" step="0.1" value="1.3">
         <span id="speedValue">1.3x</span>
     </div>
@@ -166,7 +175,17 @@
     let voices = [];
     let sentencesRaw = [];
     let currentSentenceIndex = 0;
-    let isSpeedAdjusting = false; 
+    
+    // ★ iOS 專用引擎喚醒鎖
+    let audioUnlocked = false;
+    function unlockSpeechEngine() {
+        if (!audioUnlocked) {
+            const silentUtterance = new SpeechSynthesisUtterance('');
+            silentUtterance.volume = 0;
+            synth.speak(silentUtterance);
+            audioUnlocked = true;
+        }
+    }
 
     const thaiDict = {
         "ครับ": "khrap", "ค่ะ": "kha", "คะ": "kha", "นะ": "na", "คุณ": "khun", "พี่": "Pi", 
@@ -179,19 +198,25 @@
     const speedRange = document.getElementById('speedRange');
     const statusText = document.getElementById('statusText');
 
+    // 按鈕群組
+    const btnPlay = document.getElementById('btnPlay');
+    const btnPause = document.getElementById('btnPause');
+    const btnStop = document.getElementById('btnStop');
+    const btnRewind = document.getElementById('btnRewind');
+    const btnResume = document.getElementById('btnResume');
+    const btnEdit = document.getElementById('btnEdit');
+
     function loadVoices() {
         voices = synth.getVoices();
+        if (voices.length === 0) return;
         voiceSelect.innerHTML = '';
         
-        // ★ 嚴格過濾清單：只允許 中文、粵語、泰文、日文、韓文，以及美式/英式英文
         const exactMatches = ['zh', 'yue', 'th', 'ja', 'ko'];
         const exactEnglish = ['en-us', 'en-gb'];
 
         const filtered = voices.filter(v => {
             const l = v.lang.toLowerCase().replace('_', '-');
-            const isTargetLang = exactMatches.some(prefix => l.startsWith(prefix));
-            const isTargetEng = exactEnglish.some(prefix => l.startsWith(prefix));
-            return isTargetLang || isTargetEng;
+            return exactMatches.some(prefix => l.startsWith(prefix)) || exactEnglish.some(prefix => l.startsWith(prefix));
         });
 
         let zh = filtered.filter(v => v.lang.toLowerCase().includes('zh') || v.lang.toLowerCase().includes('yue'));
@@ -209,13 +234,8 @@
         const v4 = extract(['tw', 'taiwan']);
         const v5 = extract(['hk', 'hongkong', 'yue']);
 
-        [v1, v2, v3, v4, v5].forEach((v, i) => {
-            if (v) top5.push({label: `語音樣式 ${i+1}`, voice: v});
-        });
-
-        while(top5.length < 5 && zh.length > 0) {
-            top5.push({label: `語音樣式 ${top5.length + 1}`, voice: zh.shift()});
-        }
+        [v1, v2, v3, v4, v5].forEach((v, i) => { if (v) top5.push({label: `語音樣式 ${i+1}`, voice: v}); });
+        while(top5.length < 5 && zh.length > 0) { top5.push({label: `語音樣式 ${top5.length + 1}`, voice: zh.shift()}); }
 
         const zhGroup = document.createElement('optgroup');
         zhGroup.label = "精選中文擬真語音";
@@ -238,16 +258,13 @@
         voiceSelect.appendChild(otherGroup);
     }
 
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = loadVoices;
-    }
+    if (speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = loadVoices; }
     setTimeout(loadVoices, 800);
 
-    speedRange.oninput = () => document.getElementById('speedValue').textContent = speedRange.value + 'x';
+    speedRange.oninput = () => speedValue.textContent = speedRange.value + 'x';
     speedRange.onchange = () => {
         if (synth.speaking && !synth.paused) {
-            isSpeedAdjusting = true; synth.cancel();
-            setTimeout(() => { speakSentence(currentSentenceIndex); isSpeedAdjusting = false; }, 100);
+            safeSpeak(currentSentenceIndex);
         }
     };
 
@@ -268,69 +285,82 @@
         const engCount = engMatch ? engMatch.length : 0;
         const total = text.length || 1;
         const ratio = engCount / total;
-        if (ratio > 0.2) {
-            const factor = 1 - (Math.min(ratio, 1) * 0.2);
-            return Math.max(0.5, baseRate * factor);
-        }
+        if (ratio > 0.2) return Math.max(0.5, baseRate * (1 - (Math.min(ratio, 1) * 0.2)));
         return baseRate;
     }
 
-    function speakSentence(index) {
+    // ★ 安全播放函數 (解決卡死 Bug)
+    function safeSpeak(index) {
+        synth.cancel(); // 清空佇列
         if (index < 0 || index >= sentencesRaw.length) {
             statusText.textContent = "朗讀完畢。";
-            document.getElementById('btnPause').disabled = true;
-            document.getElementById('btnRewind').disabled = true;
+            btnPause.disabled = true; btnStop.disabled = true; btnRewind.disabled = true; btnResume.disabled = true;
             return;
         }
-        synth.cancel(); // 確保每次發聲前先清空隊列，防止失控排隊
+
         const spans = document.querySelectorAll('.sentence');
         spans.forEach(s => s.classList.remove('active-sentence'));
         if (spans[index]) { spans[index].classList.add('active-sentence'); spans[index].scrollIntoView({ behavior: 'smooth', block: 'center' }); }
         
-        const processed = preprocess(sentencesRaw[index]);
-        const utt = new SpeechSynthesisUtterance(processed);
-        const voice = voices.find(v => v.name === voiceSelect.value);
-        if (voice) utt.voice = voice;
-        
-        const baseRate = parseFloat(speedRange.value);
-        utt.rate = getDynamicRate(processed, baseRate);
+        // 延遲 100ms 讓 iOS 緩衝，避免 cancel 後立刻 speak 導致引擎當機
+        setTimeout(() => {
+            const processed = preprocess(sentencesRaw[index]);
+            const utt = new SpeechSynthesisUtterance(processed);
+            const voice = voices.find(v => v.name === voiceSelect.value);
+            if (voice) utt.voice = voice;
+            
+            utt.rate = getDynamicRate(processed, parseFloat(speedRange.value));
 
-        utt.onstart = () => { statusText.textContent = `朗讀中：${index + 1} / ${sentencesRaw.length}`; };
-        utt.onend = () => { if (!isSpeedAdjusting) { currentSentenceIndex++; speakSentence(currentSentenceIndex); } };
-        synth.speak(utt);
+            utt.onstart = () => { statusText.textContent = `朗讀中：${index + 1} / ${sentencesRaw.length}`; };
+            utt.onend = (e) => { 
+                // 防止被 cancel 觸發的 onend 影響
+                if (e.name !== 'cancel' && index === currentSentenceIndex) {
+                    currentSentenceIndex++; 
+                    safeSpeak(currentSentenceIndex); 
+                }
+            };
+            utt.onerror = (e) => { console.log('Speech error:', e); };
+            
+            synth.speak(utt);
+        }, 100);
     }
 
-    document.getElementById('btnPlay').onclick = () => {
+    btnPlay.onclick = () => {
+        unlockSpeechEngine(); // 強制喚醒 iOS 引擎
         const t = textInput.value.trim(); if (!t) return;
-        synth.cancel(); // 按下播放時，先強制清除所有舊的任務
         textInput.style.display = 'none'; readDisplay.style.display = 'block';
+        
         sentencesRaw = t.match(/[^。！？.!?\n]+[。！？.!?\n]*/g) || [t];
         readDisplay.innerHTML = '';
         sentencesRaw.forEach((s, i) => {
             const span = document.createElement('span');
             span.className = 'sentence'; span.textContent = s;
-            span.onclick = () => { currentSentenceIndex = i; speakSentence(i); };
+            span.onclick = () => { unlockSpeechEngine(); currentSentenceIndex = i; safeSpeak(i); };
             readDisplay.appendChild(span);
         });
-        currentSentenceIndex = 0; speakSentence(0);
-        document.getElementById('btnPause').disabled = false;
-        document.getElementById('btnRewind').disabled = false;
+        
+        currentSentenceIndex = 0; 
+        safeSpeak(0);
+        
+        btnPause.disabled = false; btnStop.disabled = false; btnRewind.disabled = false;
     };
 
-    document.getElementById('btnPause').onclick = () => { synth.pause(); document.getElementById('btnResume').disabled = false; };
-    document.getElementById('btnResume').onclick = () => { synth.resume(); document.getElementById('btnResume').disabled = true; };
-    document.getElementById('btnRewind').onclick = () => { currentSentenceIndex = Math.max(0, currentSentenceIndex - 1); speakSentence(currentSentenceIndex); };
+    btnPause.onclick = () => { synth.pause(); btnResume.disabled = false; btnPause.disabled = true; statusText.textContent = "已暫停。"; };
+    btnResume.onclick = () => { synth.resume(); btnResume.disabled = true; btnPause.disabled = false; };
+    btnRewind.onclick = () => { currentSentenceIndex = Math.max(0, currentSentenceIndex - 1); safeSpeak(currentSentenceIndex); };
     
-    // 將「返回編輯」設定為終極停止鍵
-    document.getElementById('btnEdit').onclick = () => { 
+    btnStop.onclick = () => { 
         synth.cancel(); 
-        isSpeedAdjusting = false;
+        statusText.textContent = "已停止。"; 
+        btnPause.disabled = true; btnResume.disabled = true; btnRewind.disabled = true;
+    };
+
+    btnEdit.onclick = () => { 
+        synth.cancel(); 
         textInput.style.display = 'block'; 
         readDisplay.style.display = 'none'; 
-        document.getElementById('btnPause').disabled = true;
-        document.getElementById('btnResume').disabled = true;
-        document.getElementById('btnRewind').disabled = true;
-        statusText.textContent = "已停止並返回編輯。";
+        btnPause.disabled = true; btnStop.disabled = true; btnResume.disabled = true; btnRewind.disabled = true;
+        statusText.textContent = "已返回編輯。";
     };
 </script>
 </body>
