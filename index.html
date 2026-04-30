@@ -69,7 +69,7 @@
         .text-area-container {
             flex-grow: 1;
             overflow-y: auto;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             position: relative;
@@ -138,7 +138,7 @@
 <body>
 
 <div class="container">
-    <h2 style="margin-top: 0; margin-bottom: 15px; font-size: 22px;">文字朗讀助理 Pro</h2>
+    <h2 style="margin-top: 0; margin-bottom: 10px; font-size: 22px;">文字朗讀助理 Pro</h2>
     <div class="controls-top">
         <select id="voiceSelect"><option value="">載入中...</option></select>
     </div>
@@ -182,21 +182,38 @@
     function loadVoices() {
         voices = synth.getVoices();
         voiceSelect.innerHTML = '';
-        const allowedLangs = ['zh-tw', 'zh-cn', 'zh-hk', 'yue', 'en-us', 'en-gb', 'th-th', 'ja-jp', 'ko-kr']; 
-        const filtered = voices.filter(v => allowedLangs.some(l => v.lang.toLowerCase().startsWith(l)));
-        let zh = filtered.filter(v => v.lang.toLowerCase().startsWith('zh') || v.lang.toLowerCase().startsWith('yue'));
+        
+        // 寬鬆偵測 iOS 與各平台中文代碼
+        const allowedLangs = ['zh', 'yue', 'en', 'th', 'ja', 'ko']; 
+        const filtered = voices.filter(v => {
+            const l = v.lang.toLowerCase();
+            return allowedLangs.some(prefix => l.includes(prefix));
+        });
+
+        let zh = filtered.filter(v => v.lang.toLowerCase().includes('zh') || v.lang.toLowerCase().includes('yue'));
         let others = filtered.filter(v => !zh.includes(v));
+
         let top5 = [];
         const extract = (kws) => {
             const idx = zh.findIndex(v => kws.some(kw => v.name.toLowerCase().includes(kw)));
             return idx !== -1 ? zh.splice(idx, 1)[0] : null;
         };
+
         const v1 = extract(['siri', 'xiaoxiao', 'google', 'mei-jia']);
         const v2 = extract(['yating', 'ting-ting', 'female', '女']);
         const v3 = extract(['yunxi', 'yunjian', 'male', '男']);
         const v4 = extract(['tw', 'taiwan']);
         const v5 = extract(['hk', 'hongkong', 'yue']);
-        [v1, v2, v3, v4, v5].forEach((v, i) => { if (v) top5.push({label: `語音樣式 ${i+1}`, voice: v}); });
+
+        [v1, v2, v3, v4, v5].forEach((v, i) => {
+            if (v) top5.push({label: `語音樣式 ${i+1}`, voice: v});
+        });
+
+        // 補齊不足5個的中文聲音
+        while(top5.length < 5 && zh.length > 0) {
+            top5.push({label: `語音樣式 ${top5.length + 1}`, voice: zh.shift()});
+        }
+
         const zhGroup = document.createElement('optgroup');
         zhGroup.label = "精選中文擬真語音";
         top5.forEach(item => {
@@ -206,25 +223,28 @@
             zhGroup.appendChild(opt);
         });
         voiceSelect.appendChild(zhGroup);
+
         const otherGroup = document.createElement('optgroup');
         otherGroup.label = "支援外語 (純淨版)";
         others.forEach(v => {
             const opt = document.createElement('option');
-            opt.textContent = `${v.name} (${v.lang.split('-')[0].toUpperCase()})`;
+            opt.textContent = `${v.name} (${v.lang})`;
             opt.value = v.name;
             otherGroup.appendChild(opt);
         });
         voiceSelect.appendChild(otherGroup);
     }
 
-    speechSynthesis.onvoiceschanged = loadVoices;
-    setTimeout(loadVoices, 500);
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    setTimeout(loadVoices, 800);
 
     speedRange.oninput = () => document.getElementById('speedValue').textContent = speedRange.value + 'x';
     speedRange.onchange = () => {
         if (synth.speaking && !synth.paused) {
             isSpeedAdjusting = true; synth.cancel();
-            setTimeout(() => { speakSentence(currentSentenceIndex); isSpeedAdjusting = false; }, 50);
+            setTimeout(() => { speakSentence(currentSentenceIndex); isSpeedAdjusting = false; }, 100);
         }
     };
 
@@ -232,12 +252,13 @@
         let p = text;
         // 稱謂解壓縮
         p = p.replace(/\bP'/gi, "Phi ").replace(/\bN'/gi, "Nong ").replace(/\bK'/gi, "Khun ").replace(/\bAi'/gi, "Ai ").replace(/\b[EI]'/gi, "Ee ");
-        // 情緒長音歸一化
-        p = p.replace(/\bO[iy]+\b/gi, "噢伊").replace(/\bAo[w]+\b/gi, "嗷").replace(/\bNa+\b/gi, "吶").replace(/\b[Jj]a+\b/gi, "佳");
-        p = p.replace(/O~ho+/gi, "喔齁").replace(/\bOho+\b/gi, "喔齁");
-        // 泰百常用語羅馬拼音校正
+        // 情緒長音擬音攔截
+        p = p.replace(/\bAo[w]*\b/gi, "嗷").replace(/O~ho+/gi, "喔齁").replace(/\bOho+\b/gi, "喔齁");
+        p = p.replace(/\bO[iy]+\b/gi, "噢伊").replace(/\bNa+\b/gi, "吶").replace(/\b[Jj]a+\b/gi, "佳");
+        p = p.replace(/\b[Kk]h?a+\b/gi, "卡").replace(/\bW[oe]i+\b/gi, "喂").replace(/\b[Ee]uy+\b/gi, "欸");
+        // 泰百拼音校正
         p = p.replace(/\bShia+\b/gi, "hia").replace(/\bMaeng+\b/gi, "maeng").replace(/\bW[oe]i+\b/gi, "woei").replace(/\bNgong\b/gi, "ngong");
-        // 波浪號處理
+        // 波浪號處理：避開英文字母間結巴，並將連續波浪號轉為停頓
         p = p.replace(/([a-zA-Z])[~～]+([a-zA-Z])/g, "$1 $2").replace(/[~～]+/g, "... ");
         for (const [k, v] of Object.entries(thaiDict)) p = p.replace(new RegExp(k, "g"), ` ${v} `);
         return p;
@@ -248,7 +269,6 @@
         const engCount = engMatch ? engMatch.length : 0;
         const total = text.length || 1;
         const ratio = engCount / total;
-        // 若拼音佔比超過 20%，自動降速 15%-20% 以達到勻速體感
         if (ratio > 0.2) {
             const factor = 1 - (Math.min(ratio, 1) * 0.2);
             return Math.max(0.5, baseRate * factor);
@@ -298,4 +318,5 @@
     document.getElementById('btnEdit').onclick = () => { synth.cancel(); textInput.style.display = 'block'; readDisplay.style.display = 'none'; };
 </script>
 </body>
+</html>
 </html>
