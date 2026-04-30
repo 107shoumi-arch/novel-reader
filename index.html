@@ -3,34 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文字朗讀助理 Pro (勻速升級版)</title>
+    <title>文字朗讀助理 Pro (智能深色模式版)</title>
     <style>
+        /* CSS 變數：預設淺色模式 */
+        :root {
+            --bg-color: #f5f5f7;
+            --container-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #dddddd;
+            --highlight-bg: #FFFFCC; /* 淺色模式的淡黃底色 */
+            --hover-bg: #f0f0f0;
+            --btn-bg: #000000;
+            --btn-text: #ffffff;
+            --btn-hover: #333333;
+            --btn-disabled: #cccccc;
+            --status-color: #666666;
+        }
+
+        /* 系統深色模式偵測 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1c1c1e;
+                --container-bg: #2c2c2e;
+                --text-color: #e5e5ea;
+                --border-color: #48484a;
+                --highlight-bg: rgba(255, 255, 102, 0.25); /* 深色模式的柔和透光黃 */
+                --hover-bg: #3a3a3c;
+                --btn-bg: #e5e5ea;
+                --btn-text: #000000;
+                --btn-hover: #ffffff;
+                --btn-disabled: #48484a;
+                --status-color: #aeaeb2;
+            }
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f5f5f7;
-            color: #333;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            transition: background-color 0.3s, color 0.3s;
         }
         .container {
-            background: white;
+            background: var(--container-bg);
             padding: 30px;
             border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             width: 100%;
             max-width: 800px;
             display: flex;
             flex-direction: column;
             max-height: 90vh;
+            transition: background-color 0.3s;
         }
         .text-area-container {
             flex-grow: 1;
             overflow-y: auto;
             margin-bottom: 20px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             position: relative;
         }
@@ -44,8 +78,9 @@
             box-sizing: border-box;
             line-height: 1.8;
             outline: none;
+            background-color: transparent;
+            color: var(--text-color);
         }
-        /* 閱讀模式顯示區 */
         #readDisplay {
             display: none;
             padding: 15px;
@@ -59,10 +94,10 @@
             cursor: pointer;
         }
         .sentence:hover {
-            background-color: #f0f0f0;
+            background-color: var(--hover-bg);
         }
         .active-sentence {
-            background-color: #FFFFCC; /* 淡黃色導讀指引 */
+            background-color: var(--highlight-bg); /* 導讀指引底色 */
         }
         .controls {
             display: flex;
@@ -72,24 +107,29 @@
         }
         select, button {
             padding: 10px 15px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 15px;
             cursor: pointer;
+            background-color: var(--container-bg);
+            color: var(--text-color);
         }
         select {
             flex: 2;
-            background-color: #fff;
         }
         button {
-            background-color: #000;
-            color: white;
+            background-color: var(--btn-bg);
+            color: var(--btn-text);
             border: none;
             transition: background 0.2s;
             flex: 1;
         }
-        button:hover { background-color: #333; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        button:hover { background-color: var(--btn-hover); }
+        button:disabled { 
+            background-color: var(--btn-disabled); 
+            color: #888;
+            cursor: not-allowed; 
+        }
         .slider-container {
             display: flex;
             align-items: center;
@@ -100,7 +140,7 @@
         input[type="range"] { flex: 1; }
         .status {
             font-size: 13px;
-            color: #666;
+            color: var(--status-color);
             text-align: center;
         }
     </style>
@@ -143,12 +183,12 @@
     let voices = [];
     let sentencesRaw = [];
     let currentSentenceIndex = 0;
+    let isSpeedAdjusting = false; // 用於防止拖曳語速時造成錯誤的句子跳轉
 
     // UI Elements
     const voiceSelect = document.getElementById('voiceSelect');
     const textInput = document.getElementById('textInput');
     const readDisplay = document.getElementById('readDisplay');
-    const textContainer = document.getElementById('textContainer');
     const btnPlay = document.getElementById('btnPlay');
     const btnPause = document.getElementById('btnPause');
     const btnResume = document.getElementById('btnResume');
@@ -158,18 +198,18 @@
     const speedValue = document.getElementById('speedValue');
     const statusText = document.getElementById('statusText');
 
-    // 擴展泰文發音校正字典 (強化日常、情感與情境用語)
+    // 泰文發音校正字典 
     const thaiDictionary = {
         "ครับ": "khrap", "ค่ะ": "kha", "คะ": "kha", "นะ": "na", 
         "จ้ะ": "cha", "จ้า": "cha", "สิ": "si", "เถอะ": "thoe", 
         "คุณ": "khun", "พี่": "Pi", "น้อง": "nong", "อาจารย์": "ajarn", 
-        "ครู": "khru", "หมอ": "mor", "เชฟ": "chef", // 主廚
+        "ครู": "khru", "หมอ": "mor", "เชฟ": "chef", 
         "หลวงพี่": "luang Pi", "หลวงพ่อ": "luang pho", 
         "ป้า": "pa", "ลุง": "lung", "ตา": "ta", "ยาย": "yai",
         "โห": "oh-hoh", "อ้าว": "ao", "เฮ้ย": "hey", "ว้าว": "wao", "อุ๊ย": "ui",
         "ไอ้เหี้ย": "ai hia", "สัส": "sat", "แม่ง": "maeng", "โคตร": "khot", 
         "ชิบหาย": "chip hai", "กู": "ku", "มึง": "mueng",
-        "รัก": "rak", "คิดถึง": "khit thueng", "ชอบ": "chop", "อร่อย": "aroi", // 愛、想念、喜歡、好吃
+        "รัก": "rak", "คิดถึง": "khit thueng", "ชอบ": "chop", "อร่อย": "aroi", 
         "ใช่": "chai", "ไม่": "mai", "โอเค": "o-ke", "ขอโทษ": "kho thot", "ขอบคุณ": "khop khun",
         "ทำไม": "tham mai", "อะไร": "a-rai"
     };
@@ -178,52 +218,70 @@
         voices = synth.getVoices();
         voiceSelect.innerHTML = '';
         
-        let premiumFemaleVoice = null;
-        let standardFemaleVoice = null;
-        let maleVoice = null;
+        // 只保留 中文(zh)、英文(en)、泰文(th)、日文(ja)、韓文(ko)
+        const allowedPrefixes = ['zh', 'en', 'th', 'ja', 'ko', 'yue']; 
+        const filteredVoices = voices.filter(v => allowedPrefixes.some(prefix => v.lang.toLowerCase().startsWith(prefix)));
 
-        // 智慧挑選最佳聲音模組 (優先抓取高階女聲)
-        voices.forEach((voice) => {
-            const isChinese = voice.lang.includes('zh');
-            if (isChinese) {
-                // 優先捕捉 Apple Siri, 台灣 macOS Mei-Jia, 微軟 Xiaoxiao, Yating 等自然女聲
-                if (voice.name.includes('Siri') || voice.name.includes('Mei-Jia') || voice.name.includes('Xiaoxiao') || voice.name.includes('Yating')) {
-                    if (!premiumFemaleVoice) premiumFemaleVoice = voice;
-                }
-                else if (voice.name.includes('Ting-Ting') || voice.name.includes('Female') || voice.name.includes('女')) {
-                    if (!standardFemaleVoice) standardFemaleVoice = voice;
-                }
-                else if (voice.name.includes('Yunxi') || voice.name.includes('Yunjian') || voice.name.includes('Male') || voice.name.includes('男')) {
-                    if (!maleVoice) maleVoice = voice;
-                }
-            }
-        });
+        let zhVoices = filteredVoices.filter(v => v.lang.toLowerCase().startsWith('zh') || v.lang.toLowerCase().startsWith('yue'));
+        let otherVoices = filteredVoices.filter(v => !(v.lang.toLowerCase().startsWith('zh') || v.lang.toLowerCase().startsWith('yue')));
 
-        // 建立選單選項
-        const addOption = (voice, label) => {
-            if (!voice) return;
-            const option = document.createElement('option');
-            option.textContent = `${label} - ${voice.name}`;
-            option.value = voice.name;
-            voiceSelect.appendChild(option);
+        let top5Zh = [];
+
+        // 輔助函式：根據關鍵字撈取最佳聲音並從原陣列移除
+        const extractVoice = (keywords) => {
+            const idx = zhVoices.findIndex(v => keywords.some(kw => v.name.toLowerCase().includes(kw.toLowerCase())));
+            if (idx !== -1) return zhVoices.splice(idx, 1)[0];
+            return null;
         };
 
-        if (premiumFemaleVoice) addOption(premiumFemaleVoice, "首選 (高階真人女聲)");
-        if (standardFemaleVoice) addOption(standardFemaleVoice, "備用 (標準女聲)");
-        if (maleVoice) addOption(maleVoice, "模組 (通用男聲)");
+        // 1. 優先抓取最高階女聲 (Siri/iOS, 曉曉/Windows)
+        const v1 = extractVoice(['siri', 'mei-jia', 'xiaoxiao']); 
+        // 2. 抓取次佳女聲或柔和女聲
+        const v2 = extractVoice(['yating', 'ting-ting', 'female', '女']);
+        // 3. 抓取男聲
+        const v3 = extractVoice(['yunxi', 'yunjian', 'male', '男']);
+        // 4. 抓取台灣口音備用
+        const v4 = extractVoice(['tw', 'taiwan']);
+        // 5. 抓取香港/廣東話口音備用
+        const v5 = extractVoice(['hk', 'hongkong', 'yue']);
 
-        // 加入其餘所有聲音供手動切換
-        const group = document.createElement('optgroup');
-        group.label = "其他系統聲音";
-        voices.forEach(voice => {
-            if (voice !== premiumFemaleVoice && voice !== standardFemaleVoice && voice !== maleVoice) {
+        if (v1) top5Zh.push({label: '語音樣式 1 (高階女聲)', voice: v1});
+        if (v2) top5Zh.push({label: '語音樣式 2 (標準女聲)', voice: v2});
+        if (v3) top5Zh.push({label: '語音樣式 3 (沉穩男聲)', voice: v3});
+        if (v4) top5Zh.push({label: '語音樣式 4 (清亮女聲)', voice: v4});
+        if (v5) top5Zh.push({label: '語音樣式 5 (粵/港腔調)', voice: v5});
+
+        // 如果設備本身湊不滿 5 個特性聲音，用剩下的中文聲音補滿 5 個選項
+        while(top5Zh.length < 5 && zhVoices.length > 0) {
+            top5Zh.push({label: `語音樣式 ${top5Zh.length + 1} (系統備用)`, voice: zhVoices.shift()});
+        }
+
+        // 建立選單：精選中文 5 款
+        if (top5Zh.length > 0) {
+            const zhGroup = document.createElement('optgroup');
+            zhGroup.label = "🤖 精選中文擬真語音 (5款)";
+            top5Zh.forEach(item => {
+                const option = document.createElement('option');
+                option.textContent = `${item.label} - ${item.voice.name}`;
+                option.value = item.voice.name;
+                zhGroup.appendChild(option);
+            });
+            voiceSelect.appendChild(zhGroup);
+        }
+
+        // 建立選單：其他允許的語言 (英、泰、日、韓及剩下的中文)
+        const combinedRemaining = [...zhVoices, ...otherVoices];
+        if (combinedRemaining.length > 0) {
+            const otherGroup = document.createElement('optgroup');
+            otherGroup.label = "🌍 其他支援語言 (英/泰/日/韓)";
+            combinedRemaining.forEach(voice => {
                 const option = document.createElement('option');
                 option.textContent = `${voice.name} (${voice.lang})`;
                 option.value = voice.name;
-                group.appendChild(option);
-            }
-        });
-        voiceSelect.appendChild(group);
+                otherGroup.appendChild(option);
+            });
+            voiceSelect.appendChild(otherGroup);
+        }
     }
 
     if (speechSynthesis.onvoiceschanged !== undefined) {
@@ -231,32 +289,40 @@
     }
     setTimeout(loadVoices, 500);
 
+    // 即時語速調整：拖動時更新數字
     speedRange.addEventListener('input', () => {
         speedValue.textContent = speedRange.value + 'x';
     });
 
-    // 替換泰文為羅馬拼音
+    // 即時語速調整：放開拖動時立刻套用並重讀該句
+    speedRange.addEventListener('change', () => {
+        if (synth.speaking && !synth.paused) {
+            isSpeedAdjusting = true; // 鎖定狀態避免觸發 onend 跳下一句
+            synth.cancel();
+            setTimeout(() => {
+                speakSentence(currentSentenceIndex);
+                isSpeedAdjusting = false;
+            }, 50); // 給系統一點時間緩衝取消動作
+        }
+    });
+
     function preprocessText(text) {
         let processedText = text;
         for (const [thaiWord, phonetic] of Object.entries(thaiDictionary)) {
             const regex = new RegExp(thaiWord, "g");
-            processedText = processedText.replace(regex, ` ${phonetic} `); // 前後加空白幫助斷音
+            processedText = processedText.replace(regex, ` ${phonetic} `); 
         }
         return processedText;
     }
 
-    // ★ 核心優化：中英泰體感勻速演算法
+    // 中英泰體感勻速演算法
     function getDynamicRate(text, baseRate) {
-        // 計算英文字母（含泰文轉換後的拼音）在句子中的佔比
         const englishMatch = text.match(/[a-zA-Z]/g);
         const englishCount = englishMatch ? englishMatch.length : 0;
         const totalLength = text.length || 1;
-
         const englishRatio = englishCount / totalLength;
 
-        // 如果這句話外文比例較高，自動將語速調降 10%~20%，營造與中文相同的體感速度
         if (englishRatio > 0.2) {
-            // 比例越高，降速越多，最多降速 20%
             const slowdownFactor = 1 - (Math.min(englishRatio, 1) * 0.2); 
             return Math.max(0.5, baseRate * slowdownFactor);
         }
@@ -291,7 +357,6 @@
         const voice = voices.find(v => v.name === selectedVoiceName);
         if (voice) utterance.voice = voice;
         
-        // 套用體感勻速
         const baseRate = parseFloat(speedRange.value);
         utterance.rate = getDynamicRate(textToSpeak, baseRate);
         
@@ -303,12 +368,14 @@
         };
 
         utterance.onend = () => {
-            currentSentenceIndex++;
-            speakSentence(currentSentenceIndex);
+            // 如果是因為拉動語速而被強行中斷的，就不跳下一句
+            if (!isSpeedAdjusting) {
+                currentSentenceIndex++;
+                speakSentence(currentSentenceIndex);
+            }
         };
 
         utterance.onerror = (e) => {
-            // 避免因手動切換上一句造成的錯誤中斷
             if (e.error !== 'canceled') {
                 console.error('語音錯誤', e);
             }
@@ -324,7 +391,6 @@
         textInput.style.display = 'none';
         readDisplay.style.display = 'block';
         
-        // 改善斷句邏輯：包含引號的對白也能更精準切分
         sentencesRaw = text.match(/[^。！？.!?\n]+[。！？.!?\n]*/g) || [text];
         
         readDisplay.innerHTML = '';
