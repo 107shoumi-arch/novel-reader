@@ -314,6 +314,10 @@
             const regex = new RegExp(thaiWord, "g");
             processedText = processedText.replace(regex, ` ${phonetic} `); 
         }
+
+        // 5. 🚀 ★ 波浪號「自動斷句拉長」系統 ★
+        // 將半形(~)與全形(～)波浪號，全部自動轉換為系統能懂的停頓符號「...」
+        processedText = processedText.replace(/[~～]/g, "... ");
         
         return processedText;
     }
