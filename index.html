@@ -46,7 +46,6 @@
             margin: 0;
             padding: max(15px, env(safe-area-inset-top)) max(15px, env(safe-area-inset-right)) max(15px, env(safe-area-inset-bottom)) max(15px, env(safe-area-inset-left));
             box-sizing: border-box;
-            transition: background-color 0.3s, color 0.3s;
         }
 
         .container {
@@ -183,29 +182,21 @@
     function loadVoices() {
         voices = synth.getVoices();
         voiceSelect.innerHTML = '';
-        
         const allowedLangs = ['zh-tw', 'zh-cn', 'zh-hk', 'yue', 'en-us', 'en-gb', 'th-th', 'ja-jp', 'ko-kr']; 
         const filtered = voices.filter(v => allowedLangs.some(l => v.lang.toLowerCase().startsWith(l)));
-
         let zh = filtered.filter(v => v.lang.toLowerCase().startsWith('zh') || v.lang.toLowerCase().startsWith('yue'));
         let others = filtered.filter(v => !zh.includes(v));
-
         let top5 = [];
         const extract = (kws) => {
             const idx = zh.findIndex(v => kws.some(kw => v.name.toLowerCase().includes(kw)));
             return idx !== -1 ? zh.splice(idx, 1)[0] : null;
         };
-
         const v1 = extract(['siri', 'xiaoxiao', 'google', 'mei-jia']);
         const v2 = extract(['yating', 'ting-ting', 'female', '女']);
         const v3 = extract(['yunxi', 'yunjian', 'male', '男']);
         const v4 = extract(['tw', 'taiwan']);
         const v5 = extract(['hk', 'hongkong', 'yue']);
-
-        [v1, v2, v3, v4, v5].forEach((v, i) => {
-            if (v) top5.push({label: `語音樣式 ${i+1}`, voice: v});
-        });
-
+        [v1, v2, v3, v4, v5].forEach((v, i) => { if (v) top5.push({label: `語音樣式 ${i+1}`, voice: v}); });
         const zhGroup = document.createElement('optgroup');
         zhGroup.label = "精選中文擬真語音";
         top5.forEach(item => {
@@ -215,7 +206,6 @@
             zhGroup.appendChild(opt);
         });
         voiceSelect.appendChild(zhGroup);
-
         const otherGroup = document.createElement('optgroup');
         otherGroup.label = "支援外語 (純淨版)";
         others.forEach(v => {
@@ -240,13 +230,30 @@
 
     function preprocess(text) {
         let p = text;
-        p = p.replace(/\bP'/gi, "Phi ").replace(/\bN'/gi, "Nong ").replace(/\bK'/gi, "Khun ").replace(/\bAi'/gi, "Ai ");
-        p = p.replace(/\bAo[w]*\b/gi, "嗷").replace(/O~ho+/gi, "喔齁").replace(/\bOho+\b/gi, "喔齁");
-        p = p.replace(/\bO[iy]+\b/gi, "噢伊").replace(/\bNa+\b/gi, "吶").replace(/\b[Jj]a+\b/gi, "佳");
-        p = p.replace(/\b[Kk]h?a+\b/gi, "卡").replace(/\bW[oe]i+\b/gi, "喂").replace(/\b[Ee]uy+\b/gi, "欸");
-        p = p.replace(/([a-zA-Z])[~～]+([a-zA-Z])/g, "$1 $2").replace(/[~～]+/g, "...");
+        // 稱謂解壓縮
+        p = p.replace(/\bP'/gi, "Phi ").replace(/\bN'/gi, "Nong ").replace(/\bK'/gi, "Khun ").replace(/\bAi'/gi, "Ai ").replace(/\b[EI]'/gi, "Ee ");
+        // 情緒長音歸一化
+        p = p.replace(/\bO[iy]+\b/gi, "噢伊").replace(/\bAo[w]+\b/gi, "嗷").replace(/\bNa+\b/gi, "吶").replace(/\b[Jj]a+\b/gi, "佳");
+        p = p.replace(/O~ho+/gi, "喔齁").replace(/\bOho+\b/gi, "喔齁");
+        // 泰百常用語羅馬拼音校正
+        p = p.replace(/\bShia+\b/gi, "hia").replace(/\bMaeng+\b/gi, "maeng").replace(/\bW[oe]i+\b/gi, "woei").replace(/\bNgong\b/gi, "ngong");
+        // 波浪號處理
+        p = p.replace(/([a-zA-Z])[~～]+([a-zA-Z])/g, "$1 $2").replace(/[~～]+/g, "... ");
         for (const [k, v] of Object.entries(thaiDict)) p = p.replace(new RegExp(k, "g"), ` ${v} `);
         return p;
+    }
+
+    function getDynamicRate(text, baseRate) {
+        const engMatch = text.match(/[a-zA-Z]/g);
+        const engCount = engMatch ? engMatch.length : 0;
+        const total = text.length || 1;
+        const ratio = engCount / total;
+        // 若拼音佔比超過 20%，自動降速 15%-20% 以達到勻速體感
+        if (ratio > 0.2) {
+            const factor = 1 - (Math.min(ratio, 1) * 0.2);
+            return Math.max(0.5, baseRate * factor);
+        }
+        return baseRate;
     }
 
     function speakSentence(index) {
@@ -256,10 +263,13 @@
         spans.forEach(s => s.classList.remove('active-sentence'));
         if (spans[index]) { spans[index].classList.add('active-sentence'); spans[index].scrollIntoView({ behavior: 'smooth', block: 'center' }); }
         
-        const utt = new SpeechSynthesisUtterance(preprocess(sentencesRaw[index]));
+        const processed = preprocess(sentencesRaw[index]);
+        const utt = new SpeechSynthesisUtterance(processed);
         const voice = voices.find(v => v.name === voiceSelect.value);
         if (voice) utt.voice = voice;
-        utt.rate = parseFloat(speedRange.value);
+        
+        const baseRate = parseFloat(speedRange.value);
+        utt.rate = getDynamicRate(processed, baseRate);
 
         utt.onstart = () => { statusText.textContent = `朗讀中：${index + 1} / ${sentencesRaw.length}`; };
         utt.onend = () => { if (!isSpeedAdjusting) { currentSentenceIndex++; speakSentence(currentSentenceIndex); } };
