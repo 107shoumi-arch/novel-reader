@@ -17,6 +17,7 @@
             --btn-hover: #333333;
             --btn-disabled: #cccccc;
             --status-color: #666666;
+            --accent-color: #007aff;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -40,123 +41,137 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             display: flex;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
             min-height: 100dvh;
             margin: 0;
-            padding: max(15px, env(safe-area-inset-top)) max(15px, env(safe-area-inset-right)) max(15px, env(safe-area-inset-bottom)) max(15px, env(safe-area-inset-left));
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             box-sizing: border-box;
+            overflow: hidden;
         }
 
-        .container {
-            background: var(--container-bg);
+        /* 內容顯示區 */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
             padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.15);
-            width: 100%;
-            max-width: 800px;
             display: flex;
             flex-direction: column;
-            height: 100%;
-            max-height: 100%;
-            box-sizing: border-box;
-        }
-
-        @media (min-width: 600px) {
-            .container { padding: 30px; height: auto; max-height: 90vh; }
         }
 
         .text-area-container {
-            flex-grow: 1;
-            overflow-y: auto;
-            margin-bottom: 15px;
+            flex: 1;
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            position: relative;
+            border-radius: 12px;
+            background: var(--container-bg);
+            margin-bottom: 20px;
+            overflow: hidden;
+            display: flex;
         }
 
         textarea {
-            width: 100%; height: 100%; min-height: 200px;
-            padding: 15px; border: none; font-size: 16px;
-            resize: none; box-sizing: border-box; line-height: 1.8;
-            outline: none; background-color: transparent; color: var(--text-color);
+            width: 100%;
+            height: 100%;
+            padding: 15px;
+            border: none;
+            font-size: 17px;
+            line-height: 1.8;
+            outline: none;
+            background: transparent;
+            color: var(--text-color);
+            resize: none;
         }
 
         #readDisplay {
-            display: none; padding: 15px; font-size: 16px;
-            line-height: 1.8; white-space: pre-wrap;
+            display: none;
+            padding: 15px;
+            font-size: 17px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            width: 100%;
         }
 
         .sentence { transition: background-color 0.2s; border-radius: 4px; cursor: pointer; }
-        .sentence:hover { background-color: var(--hover-bg); }
-        .active-sentence { background-color: var(--highlight-bg); }
+        .active-sentence { background-color: var(--highlight-bg); font-weight: 500; }
 
-        .controls-top { display: flex; width: 100%; margin-bottom: 15px; }
-
-        select {
-            width: 100%; padding: 12px 15px; border: 1px solid var(--border-color);
-            border-radius: 8px; font-size: 15px;
-            background-color: var(--container-bg); color: var(--text-color);
+        /* 固定在底部的控制列 */
+        .control-bar {
+            background: var(--container-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 15px 20px calc(15px + env(safe-area-inset-bottom));
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
         }
 
+        .controls-row { display: flex; gap: 8px; margin-bottom: 12px; }
         .controls-buttons {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
         }
+
+        select, button {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 14px;
+            background: var(--container-bg);
+            color: var(--text-color);
+            padding: 10px;
+        }
+
+        select { width: 100%; height: 44px; }
 
         button {
-            background-color: var(--btn-bg); color: var(--btn-text);
-            border: none; padding: 14px 8px; border-radius: 10px;
-            font-size: 15px; font-weight: 500; cursor: pointer;
-            transition: background 0.2s, opacity 0.2s;
-            display: flex; justify-content: center; align-items: center;
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            font-weight: 600;
+            height: 44px;
+            cursor: pointer;
+            border: none;
         }
 
-        button:active { transform: scale(0.98); }
-        button:disabled { background-color: var(--btn-disabled); color: #888; cursor: not-allowed; }
-
-        #btnPlay { grid-column: 1 / 2; }
-        #btnPause { grid-column: 2 / 3; }
-        #btnResume { grid-column: 3 / 4; }
-        #btnRewind { grid-column: 1 / 3; } 
-        #btnEdit { grid-column: 3 / 4; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        #btnStop { background: #ff3b30; color: white; }
 
         .slider-container {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 10px; font-size: 14px; margin-bottom: 15px;
-            background: var(--hover-bg); padding: 12px 15px; border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 0;
         }
 
-        input[type="range"] { flex: 1; margin: 0 10px; }
-        #speedValue { width: 35px; text-align: right; font-weight: 500; }
+        input[type="range"] { flex: 1; }
+        .status { font-size: 12px; color: var(--status-color); text-align: center; margin-top: 8px; }
 
-        .status { font-size: 13px; color: var(--status-color); text-align: center; padding-bottom: 5px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2 style="margin-top: 0; margin-bottom: 10px; font-size: 22px;">文字朗讀助理 Pro</h2>
-    <div class="controls-top">
-        <select id="voiceSelect"><option value="">載入中...</option></select>
-    </div>
-    <div class="text-area-container" id="textContainer">
-        <textarea id="textInput" placeholder="請在此貼上文字..."></textarea>
+<div class="content-area">
+    <h2 style="margin: 0 0 15px 0; font-size: 20px;">文字朗讀助理 Pro</h2>
+    <div class="text-area-container">
+        <textarea id="textInput" placeholder="在此貼上妳的小說內容..."></textarea>
         <div id="readDisplay"></div>
     </div>
+</div>
+
+<div class="control-bar">
+    <div class="controls-row">
+        <select id="voiceSelect"><option value="">載入聲音中...</option></select>
+    </div>
+    
     <div class="controls-buttons">
-        <button id="btnPlay">播放/導讀</button>
+        <button id="btnPlay">播放 / 導讀</button>
         <button id="btnPause" disabled>暫停</button>
+        <button id="btnStop" disabled>停止</button>
+        <button id="btnRewind" disabled>上一句</button>
         <button id="btnResume" disabled>繼續</button>
-        <button id="btnRewind" disabled>回溯</button>
         <button id="btnEdit">返回編輯</button>
     </div>
+
     <div class="slider-container">
-        <label>基準語速：</label>
+        <label style="font-size: 13px;">語速：</label>
         <input type="range" id="speedRange" min="0.5" max="3.0" step="0.1" value="1.3">
-        <span id="speedValue">1.3x</span>
+        <span id="speedValue" style="font-size: 13px; width: 35px;">1.3x</span>
     </div>
     <div class="status" id="statusText">系統待命中...</div>
 </div>
@@ -166,12 +181,8 @@
     let voices = [];
     let sentencesRaw = [];
     let currentSentenceIndex = 0;
-    let isSpeedAdjusting = false; 
-
-    const thaiDict = {
-        "ครับ": "khrap", "ค่ะ": "kha", "คะ": "kha", "นะ": "na", "คุณ": "khun", "พี่": "Pi", 
-        "เช夫": "chef", "หมอ": "mor", "รัก": "rak", "อร่อย": "aroi", "ขอโทษ": "kho thot"
-    };
+    let isSpeedAdjusting = false;
+    let wakeLock = null;
 
     const voiceSelect = document.getElementById('voiceSelect');
     const textInput = document.getElementById('textInput');
@@ -179,86 +190,67 @@
     const speedRange = document.getElementById('speedRange');
     const statusText = document.getElementById('statusText');
 
+    const thaiDict = {
+        "ครับ": "khrap", "ค่ะ": "kha", "คะ": "kha", "นะ": "na", "คุณ": "khun", "พี่": "Pi", 
+        "เช夫": "chef", "หมอ": "mor", "รัก": "rak", "อร่อย": "aroi", "ขอโทษ": "kho thot"
+    };
+
+    // 嘗試取得螢幕喚醒鎖定
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); }
+        } catch (err) { console.log('Wake Lock failed'); }
+    }
+
     function loadVoices() {
         voices = synth.getVoices();
         voiceSelect.innerHTML = '';
         
-        // 寬鬆偵測 iOS 與各平台中文代碼
-        const allowedLangs = ['zh', 'yue', 'en', 'th', 'ja', 'ko']; 
-        const filtered = voices.filter(v => {
-            const l = v.lang.toLowerCase();
-            return allowedLangs.some(prefix => l.includes(prefix));
+        // 嚴格精準過濾
+        const allowed = [
+            'zh-tw', 'zh-cn', 'zh-hk', 'yue', // 中文/粵語
+            'th-th', 'ja-jp', 'ko-kr',       // 泰/日/韓
+            'en-us', 'en-gb'                 // 英語(僅限美英)
+        ];
+
+        let filtered = voices.filter(v => allowed.some(lang => v.lang.toLowerCase().replace('_', '-').startsWith(lang)));
+
+        // 排序：中文優先
+        filtered.sort((a, b) => {
+            const aZh = a.lang.includes('zh') || a.lang.includes('yue');
+            const bZh = b.lang.includes('zh') || b.lang.includes('yue');
+            return bZh - aZh;
         });
 
-        let zh = filtered.filter(v => v.lang.toLowerCase().includes('zh') || v.lang.toLowerCase().includes('yue'));
-        let others = filtered.filter(v => !zh.includes(v));
-
-        let top5 = [];
-        const extract = (kws) => {
-            const idx = zh.findIndex(v => kws.some(kw => v.name.toLowerCase().includes(kw)));
-            return idx !== -1 ? zh.splice(idx, 1)[0] : null;
-        };
-
-        const v1 = extract(['siri', 'xiaoxiao', 'google', 'mei-jia']);
-        const v2 = extract(['yating', 'ting-ting', 'female', '女']);
-        const v3 = extract(['yunxi', 'yunjian', 'male', '男']);
-        const v4 = extract(['tw', 'taiwan']);
-        const v5 = extract(['hk', 'hongkong', 'yue']);
-
-        [v1, v2, v3, v4, v5].forEach((v, i) => {
-            if (v) top5.push({label: `語音樣式 ${i+1}`, voice: v});
-        });
-
-        // 補齊不足5個的中文聲音
-        while(top5.length < 5 && zh.length > 0) {
-            top5.push({label: `語音樣式 ${top5.length + 1}`, voice: zh.shift()});
-        }
-
-        const zhGroup = document.createElement('optgroup');
-        zhGroup.label = "精選中文擬真語音";
-        top5.forEach(item => {
-            const opt = document.createElement('option');
-            opt.textContent = `${item.label} - ${item.voice.name}`;
-            opt.value = item.voice.name;
-            zhGroup.appendChild(opt);
-        });
-        voiceSelect.appendChild(zhGroup);
-
-        const otherGroup = document.createElement('optgroup');
-        otherGroup.label = "支援外語 (純淨版)";
-        others.forEach(v => {
+        filtered.forEach(v => {
             const opt = document.createElement('option');
             opt.textContent = `${v.name} (${v.lang})`;
             opt.value = v.name;
-            otherGroup.appendChild(opt);
+            voiceSelect.appendChild(opt);
         });
-        voiceSelect.appendChild(otherGroup);
+        
+        if (voiceSelect.options.length === 0) {
+            const opt = document.createElement('option');
+            opt.textContent = "未偵測到相容語言包";
+            voiceSelect.appendChild(opt);
+        }
     }
 
     if (speechSynthesis.onvoiceschanged !== undefined) {
         speechSynthesis.onvoiceschanged = loadVoices;
     }
-    setTimeout(loadVoices, 800);
+    setTimeout(loadVoices, 500);
 
     speedRange.oninput = () => document.getElementById('speedValue').textContent = speedRange.value + 'x';
-    speedRange.onchange = () => {
-        if (synth.speaking && !synth.paused) {
-            isSpeedAdjusting = true; synth.cancel();
-            setTimeout(() => { speakSentence(currentSentenceIndex); isSpeedAdjusting = false; }, 100);
-        }
-    };
 
     function preprocess(text) {
         let p = text;
         // 稱謂解壓縮
         p = p.replace(/\bP'/gi, "Phi ").replace(/\bN'/gi, "Nong ").replace(/\bK'/gi, "Khun ").replace(/\bAi'/gi, "Ai ").replace(/\b[EI]'/gi, "Ee ");
-        // 情緒長音擬音攔截
+        // 情緒擬音
         p = p.replace(/\bAo[w]*\b/gi, "嗷").replace(/O~ho+/gi, "喔齁").replace(/\bOho+\b/gi, "喔齁");
-        p = p.replace(/\bO[iy]+\b/gi, "噢伊").replace(/\bNa+\b/gi, "吶").replace(/\b[Jj]a+\b/gi, "佳");
-        p = p.replace(/\b[Kk]h?a+\b/gi, "卡").replace(/\bW[oe]i+\b/gi, "喂").replace(/\b[Ee]uy+\b/gi, "欸");
-        // 泰百拼音校正
-        p = p.replace(/\bShia+\b/gi, "hia").replace(/\bMaeng+\b/gi, "maeng").replace(/\bW[oe]i+\b/gi, "woei").replace(/\bNgong\b/gi, "ngong");
-        // 波浪號處理：避開英文字母間結巴，並將連續波浪號轉為停頓
+        p = p.replace(/\bO[iy]+\b/gi, "噢伊").replace(/\bNa+\b/gi, "吶").replace(/\b[Jj]a+\b/gi, "佳").replace(/\b[Kk]h?a+\b/gi, "卡");
+        // 符號處理
         p = p.replace(/([a-zA-Z])[~～]+([a-zA-Z])/g, "$1 $2").replace(/[~～]+/g, "... ");
         for (const [k, v] of Object.entries(thaiDict)) p = p.replace(new RegExp(k, "g"), ` ${v} `);
         return p;
@@ -266,57 +258,72 @@
 
     function getDynamicRate(text, baseRate) {
         const engMatch = text.match(/[a-zA-Z]/g);
-        const engCount = engMatch ? engMatch.length : 0;
-        const total = text.length || 1;
-        const ratio = engCount / total;
-        if (ratio > 0.2) {
-            const factor = 1 - (Math.min(ratio, 1) * 0.2);
-            return Math.max(0.5, baseRate * factor);
-        }
-        return baseRate;
+        const ratio = (engMatch ? engMatch.length : 0) / (text.length || 1);
+        return ratio > 0.2 ? Math.max(0.5, baseRate * (1 - (ratio * 0.2))) : baseRate;
     }
 
     function speakSentence(index) {
-        if (index < 0 || index >= sentencesRaw.length) return statusText.textContent = "朗讀完畢。";
+        if (index < 0 || index >= sentencesRaw.length) {
+            stopPlayback();
+            statusText.textContent = "朗讀完畢。";
+            return;
+        }
+        currentSentenceIndex = index;
         synth.cancel();
+
         const spans = document.querySelectorAll('.sentence');
         spans.forEach(s => s.classList.remove('active-sentence'));
-        if (spans[index]) { spans[index].classList.add('active-sentence'); spans[index].scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        
-        const processed = preprocess(sentencesRaw[index]);
-        const utt = new SpeechSynthesisUtterance(processed);
+        if (spans[index]) {
+            spans[index].classList.add('active-sentence');
+            spans[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        const utt = new SpeechSynthesisUtterance(preprocess(sentencesRaw[index]));
         const voice = voices.find(v => v.name === voiceSelect.value);
         if (voice) utt.voice = voice;
-        
-        const baseRate = parseFloat(speedRange.value);
-        utt.rate = getDynamicRate(processed, baseRate);
+        utt.rate = getDynamicRate(sentencesRaw[index], parseFloat(speedRange.value));
 
         utt.onstart = () => { statusText.textContent = `朗讀中：${index + 1} / ${sentencesRaw.length}`; };
-        utt.onend = () => { if (!isSpeedAdjusting) { currentSentenceIndex++; speakSentence(currentSentenceIndex); } };
+        utt.onend = () => { if (!isSpeedAdjusting && synth.speaking) { speakSentence(currentSentenceIndex + 1); } };
+        
         synth.speak(utt);
     }
 
-    document.getElementById('btnPlay').onclick = () => {
+    function stopPlayback() {
+        synth.cancel();
+        currentSentenceIndex = 0;
+        document.getElementById('btnPause').disabled = true;
+        document.getElementById('btnStop').disabled = true;
+        document.getElementById('btnResume').disabled = true;
+        document.getElementById('btnRewind').disabled = true;
+        statusText.textContent = "已停止。";
+        if (wakeLock) { wakeLock.release(); wakeLock = null; }
+    }
+
+    document.getElementById('btnPlay').onclick = async () => {
         const t = textInput.value.trim(); if (!t) return;
+        await requestWakeLock();
         textInput.style.display = 'none'; readDisplay.style.display = 'block';
         sentencesRaw = t.match(/[^。！？.!?\n]+[。！？.!?\n]*/g) || [t];
         readDisplay.innerHTML = '';
         sentencesRaw.forEach((s, i) => {
             const span = document.createElement('span');
             span.className = 'sentence'; span.textContent = s;
-            span.onclick = () => { currentSentenceIndex = i; speakSentence(i); };
+            span.onclick = () => speakSentence(i);
             readDisplay.appendChild(span);
         });
-        currentSentenceIndex = 0; speakSentence(0);
         document.getElementById('btnPause').disabled = false;
+        document.getElementById('btnStop').disabled = false;
         document.getElementById('btnRewind').disabled = false;
+        speakSentence(0);
     };
 
     document.getElementById('btnPause').onclick = () => { synth.pause(); document.getElementById('btnResume').disabled = false; };
     document.getElementById('btnResume').onclick = () => { synth.resume(); document.getElementById('btnResume').disabled = true; };
-    document.getElementById('btnRewind').onclick = () => { currentSentenceIndex = Math.max(0, currentSentenceIndex - 1); speakSentence(currentSentenceIndex); };
-    document.getElementById('btnEdit').onclick = () => { synth.cancel(); textInput.style.display = 'block'; readDisplay.style.display = 'none'; };
+    document.getElementById('btnStop').onclick = stopPlayback;
+    document.getElementById('btnRewind').onclick = () => speakSentence(Math.max(0, currentSentenceIndex - 1));
+    document.getElementById('btnEdit').onclick = () => { stopPlayback(); textInput.style.display = 'block'; readDisplay.style.display = 'none'; };
+
 </script>
 </body>
-</html>
 </html>
