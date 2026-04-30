@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字朗讀助理 Pro (勻速升級版)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+        .text-area-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            position: relative;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 15px;
+            border: none;
+            font-size: 16px;
+            resize: none;
+            box-sizing: border-box;
+            line-height: 1.8;
+            outline: none;
+        }
+        /* 閱讀模式顯示區 */
+        #readDisplay {
+            display: none;
+            padding: 15px;
+            font-size: 16px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+        .sentence {
+            transition: background-color 0.2s;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .sentence:hover {
+            background-color: #f0f0f0;
+        }
+        .active-sentence {
+            background-color: #FFFFCC; /* 淡黃色導讀指引 */
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        select, button {
+            padding: 10px 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        select {
+            flex: 2;
+            background-color: #fff;
+        }
+        button {
+            background-color: #000;
+            color: white;
+            border: none;
+            transition: background 0.2s;
+            flex: 1;
+        }
+        button:hover { background-color: #333; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        input[type="range"] { flex: 1; }
+        .status {
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="margin-top: 0; margin-bottom: 15px;">文字朗讀助理 Pro</h2>
+    
+    <div class="controls">
+        <select id="voiceSelect">
+            <option value="">載入語音模組中...</option>
+        </select>
+    </div>
+
+    <div class="text-area-container" id="textContainer">
+        <textarea id="textInput" placeholder="請在此貼上你想朗讀的文字（不限長短，中英泰皆可）..."></textarea>
+        <div id="readDisplay"></div>
+    </div>
+    
+    <div class="controls">
+        <button id="btnPlay">播放 / 導讀</button>
+        <button id="btnPause" disabled>暫停</button>
+        <button id="btnResume" disabled>繼續</button>
+        <button id="btnRewind" disabled>回溯 (上一句)</button>
+        <button id="btnEdit">返回編輯</button>
+    </div>
+
+    <div class="slider-container">
+        <label for="speedRange">基準語速 (預設1.3)：</label>
+        <input type="range" id="speedRange" min="0.5" max="3.0" step="0.1" value="1.3">
+        <span id="speedValue">1.3x</span>
+    </div>
+
+    <div class="status" id="statusText">系統待命中...</div>
+</div>
+
+<script>
+    const synth = window.speechSynthesis;
+    let voices = [];
+    let sentencesRaw = [];
+    let currentSentenceIndex = 0;
+
+    // UI Elements
+    const voiceSelect = document.getElementById('voiceSelect');
+    const textInput = document.getElementById('textInput');
+    const readDisplay = document.getElementById('readDisplay');
+    const textContainer = document.getElementById('textContainer');
+    const btnPlay = document.getElementById('btnPlay');
+    const btnPause = document.getElementById('btnPause');
+    const btnResume = document.getElementById('btnResume');
+    const btnRewind = document.getElementById('btnRewind');
+    const btnEdit = document.getElementById('btnEdit');
+    const speedRange = document.getElementById('speedRange');
+    const speedValue = document.getElementById('speedValue');
+    const statusText = document.getElementById('statusText');
+
+    // 擴展泰文發音校正字典 (強化日常、情感與情境用語)
+    const thaiDictionary = {
+        "ครับ": "khrap", "ค่ะ": "kha", "คะ": "kha", "นะ": "na", 
+        "จ้ะ": "cha", "จ้า": "cha", "สิ": "si", "เถอะ": "thoe", 
+        "คุณ": "khun", "พี่": "Pi", "น้อง": "nong", "อาจารย์": "ajarn", 
+        "ครู": "khru", "หมอ": "mor", "เชฟ": "chef", // 主廚
+        "หลวงพี่": "luang Pi", "หลวงพ่อ": "luang pho", 
+        "ป้า": "pa", "ลุง": "lung", "ตา": "ta", "ยาย": "yai",
+        "โห": "oh-hoh", "อ้าว": "ao", "เฮ้ย": "hey", "ว้าว": "wao", "อุ๊ย": "ui",
+        "ไอ้เหี้ย": "ai hia", "สัส": "sat", "แม่ง": "maeng", "โคตร": "khot", 
+        "ชิบหาย": "chip hai", "กู": "ku", "มึง": "mueng",
+        "รัก": "rak", "คิดถึง": "khit thueng", "ชอบ": "chop", "อร่อย": "aroi", // 愛、想念、喜歡、好吃
+        "ใช่": "chai", "ไม่": "mai", "โอเค": "o-ke", "ขอโทษ": "kho thot", "ขอบคุณ": "khop khun",
+        "ทำไม": "tham mai", "อะไร": "a-rai"
+    };
+
+    function loadVoices() {
+        voices = synth.getVoices();
+        voiceSelect.innerHTML = '';
+        
+        let premiumFemaleVoice = null;
+        let standardFemaleVoice = null;
+        let maleVoice = null;
+
+        // 智慧挑選最佳聲音模組 (優先抓取高階女聲)
+        voices.forEach((voice) => {
+            const isChinese = voice.lang.includes('zh');
+            if (isChinese) {
+                // 優先捕捉 Apple Siri, 台灣 macOS Mei-Jia, 微軟 Xiaoxiao, Yating 等自然女聲
+                if (voice.name.includes('Siri') || voice.name.includes('Mei-Jia') || voice.name.includes('Xiaoxiao') || voice.name.includes('Yating')) {
+                    if (!premiumFemaleVoice) premiumFemaleVoice = voice;
+                }
+                else if (voice.name.includes('Ting-Ting') || voice.name.includes('Female') || voice.name.includes('女')) {
+                    if (!standardFemaleVoice) standardFemaleVoice = voice;
+                }
+                else if (voice.name.includes('Yunxi') || voice.name.includes('Yunjian') || voice.name.includes('Male') || voice.name.includes('男')) {
+                    if (!maleVoice) maleVoice = voice;
+                }
+            }
+        });
+
+        // 建立選單選項
+        const addOption = (voice, label) => {
+            if (!voice) return;
+            const option = document.createElement('option');
+            option.textContent = `${label} - ${voice.name}`;
+            option.value = voice.name;
+            voiceSelect.appendChild(option);
+        };
+
+        if (premiumFemaleVoice) addOption(premiumFemaleVoice, "首選 (高階真人女聲)");
+        if (standardFemaleVoice) addOption(standardFemaleVoice, "備用 (標準女聲)");
+        if (maleVoice) addOption(maleVoice, "模組 (通用男聲)");
+
+        // 加入其餘所有聲音供手動切換
+        const group = document.createElement('optgroup');
+        group.label = "其他系統聲音";
+        voices.forEach(voice => {
+            if (voice !== premiumFemaleVoice && voice !== standardFemaleVoice && voice !== maleVoice) {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.value = voice.name;
+                group.appendChild(option);
+            }
+        });
+        voiceSelect.appendChild(group);
+    }
+
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    setTimeout(loadVoices, 500);
+
+    speedRange.addEventListener('input', () => {
+        speedValue.textContent = speedRange.value + 'x';
+    });
+
+    // 替換泰文為羅馬拼音
+    function preprocessText(text) {
+        let processedText = text;
+        for (const [thaiWord, phonetic] of Object.entries(thaiDictionary)) {
+            const regex = new RegExp(thaiWord, "g");
+            processedText = processedText.replace(regex, ` ${phonetic} `); // 前後加空白幫助斷音
+        }
+        return processedText;
+    }
+
+    // ★ 核心優化：中英泰體感勻速演算法
+    function getDynamicRate(text, baseRate) {
+        // 計算英文字母（含泰文轉換後的拼音）在句子中的佔比
+        const englishMatch = text.match(/[a-zA-Z]/g);
+        const englishCount = englishMatch ? englishMatch.length : 0;
+        const totalLength = text.length || 1;
+
+        const englishRatio = englishCount / totalLength;
+
+        // 如果這句話外文比例較高，自動將語速調降 10%~20%，營造與中文相同的體感速度
+        if (englishRatio > 0.2) {
+            // 比例越高，降速越多，最多降速 20%
+            const slowdownFactor = 1 - (Math.min(englishRatio, 1) * 0.2); 
+            return Math.max(0.5, baseRate * slowdownFactor);
+        }
+        return baseRate;
+    }
+
+    function highlightSentence(index) {
+        const spans = document.querySelectorAll('.sentence');
+        spans.forEach(span => span.classList.remove('active-sentence'));
+        if (spans[index]) {
+            spans[index].classList.add('active-sentence');
+            spans[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function speakSentence(index) {
+        if (index < 0 || index >= sentencesRaw.length) {
+            statusText.textContent = "朗讀完畢。";
+            btnPause.disabled = true;
+            btnRewind.disabled = true;
+            return;
+        }
+        
+        synth.cancel();
+        highlightSentence(index);
+        
+        const rawText = sentencesRaw[index];
+        const textToSpeak = preprocessText(rawText);
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        
+        const selectedVoiceName = voiceSelect.value;
+        const voice = voices.find(v => v.name === selectedVoiceName);
+        if (voice) utterance.voice = voice;
+        
+        // 套用體感勻速
+        const baseRate = parseFloat(speedRange.value);
+        utterance.rate = getDynamicRate(textToSpeak, baseRate);
+        
+        utterance.onstart = () => {
+            statusText.textContent = `正在朗讀：第 ${index + 1} / ${sentencesRaw.length} 句 (動態語速: ${utterance.rate.toFixed(2)}x)`;
+            btnPause.disabled = false;
+            btnResume.disabled = true;
+            btnRewind.disabled = false;
+        };
+
+        utterance.onend = () => {
+            currentSentenceIndex++;
+            speakSentence(currentSentenceIndex);
+        };
+
+        utterance.onerror = (e) => {
+            // 避免因手動切換上一句造成的錯誤中斷
+            if (e.error !== 'canceled') {
+                console.error('語音錯誤', e);
+            }
+        };
+
+        synth.speak(utterance);
+    }
+
+    btnPlay.addEventListener('click', () => {
+        const text = textInput.value.trim();
+        if (!text) return alert("請先輸入文字。");
+
+        textInput.style.display = 'none';
+        readDisplay.style.display = 'block';
+        
+        // 改善斷句邏輯：包含引號的對白也能更精準切分
+        sentencesRaw = text.match(/[^。！？.!?\n]+[。！？.!?\n]*/g) || [text];
+        
+        readDisplay.innerHTML = '';
+        sentencesRaw.forEach((sentence, i) => {
+            const span = document.createElement('span');
+            span.className = 'sentence';
+            span.textContent = sentence;
+            span.onclick = () => {
+                currentSentenceIndex = i;
+                speakSentence(currentSentenceIndex);
+            };
+            readDisplay.appendChild(span);
+        });
+
+        currentSentenceIndex = 0;
+        speakSentence(currentSentenceIndex);
+        btnEdit.style.display = 'inline-block';
+    });
+
+    btnPause.addEventListener('click', () => {
+        if (synth.speaking) {
+            synth.pause();
+            btnPause.disabled = true;
+            btnResume.disabled = false;
+            statusText.textContent = "已暫停。";
+        }
+    });
+
+    btnResume.addEventListener('click', () => {
+        if (synth.paused) {
+            synth.resume();
+            btnPause.disabled = false;
+            btnResume.disabled = true;
+            statusText.textContent = `繼續朗讀：第 ${currentSentenceIndex + 1} / ${sentencesRaw.length} 句`;
+        }
+    });
+
+    btnRewind.addEventListener('click', () => {
+        if (sentencesRaw.length === 0) return;
+        currentSentenceIndex = Math.max(0, currentSentenceIndex - 1);
+        speakSentence(currentSentenceIndex);
+    });
+
+    btnEdit.addEventListener('click', () => {
+        synth.cancel();
+        textInput.style.display = 'block';
+        readDisplay.style.display = 'none';
+        btnPause.disabled = true;
+        btnResume.disabled = true;
+        btnRewind.disabled = true;
+        statusText.textContent = "已返回編輯模式。";
+    });
+
+    window.addEventListener('beforeunload', () => {
+        synth.cancel();
+    });
+</script>
+
+</body>
+</html>
