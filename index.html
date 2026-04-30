@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文字朗讀助理 Pro (智能深色模式版)</title>
+    <title>文字朗讀助理 Pro (終極語氣版)</title>
     <style>
         /* CSS 變數：預設淺色模式 */
         :root {
@@ -11,7 +11,7 @@
             --container-bg: #ffffff;
             --text-color: #333333;
             --border-color: #dddddd;
-            --highlight-bg: #FFFFCC; /* 淺色模式的淡黃底色 */
+            --highlight-bg: #FFFFCC; 
             --hover-bg: #f0f0f0;
             --btn-bg: #000000;
             --btn-text: #ffffff;
@@ -27,7 +27,7 @@
                 --container-bg: #2c2c2e;
                 --text-color: #e5e5ea;
                 --border-color: #48484a;
-                --highlight-bg: rgba(255, 255, 102, 0.25); /* 深色模式的柔和透光黃 */
+                --highlight-bg: rgba(255, 255, 102, 0.25); 
                 --hover-bg: #3a3a3c;
                 --btn-bg: #e5e5ea;
                 --btn-text: #000000;
@@ -97,7 +97,7 @@
             background-color: var(--hover-bg);
         }
         .active-sentence {
-            background-color: var(--highlight-bg); /* 導讀指引底色 */
+            background-color: var(--highlight-bg); 
         }
         .controls {
             display: flex;
@@ -183,22 +183,9 @@
     let voices = [];
     let sentencesRaw = [];
     let currentSentenceIndex = 0;
-    let isSpeedAdjusting = false; // 用於防止拖曳語速時造成錯誤的句子跳轉
+    let isSpeedAdjusting = false; 
 
-    // UI Elements
-    const voiceSelect = document.getElementById('voiceSelect');
-    const textInput = document.getElementById('textInput');
-    const readDisplay = document.getElementById('readDisplay');
-    const btnPlay = document.getElementById('btnPlay');
-    const btnPause = document.getElementById('btnPause');
-    const btnResume = document.getElementById('btnResume');
-    const btnRewind = document.getElementById('btnRewind');
-    const btnEdit = document.getElementById('btnEdit');
-    const speedRange = document.getElementById('speedRange');
-    const speedValue = document.getElementById('speedValue');
-    const statusText = document.getElementById('statusText');
-
-    // 泰文發音校正字典 
+    // 泰文原生字與固定單字字典
     const thaiDictionary = {
         "ครับ": "khrap", "ค่ะ": "kha", "คะ": "kha", "นะ": "na", 
         "จ้ะ": "cha", "จ้า": "cha", "สิ": "si", "เถอะ": "thoe", 
@@ -211,14 +198,14 @@
         "ชิบหาย": "chip hai", "กู": "ku", "มึง": "mueng",
         "รัก": "rak", "คิดถึง": "khit thueng", "ชอบ": "chop", "อร่อย": "aroi", 
         "ใช่": "chai", "ไม่": "mai", "โอเค": "o-ke", "ขอโทษ": "kho thot", "ขอบคุณ": "khop khun",
-        "ทำไม": "tham mai", "อะไร": "a-rai"
+        "ทำไม": "tham mai", "อะไร": "a-rai",
+        "jing": "jing", "ngong": "ngong", "mak": "mak", "su su": "su su"
     };
 
     function loadVoices() {
         voices = synth.getVoices();
         voiceSelect.innerHTML = '';
         
-        // 只保留 中文(zh)、英文(en)、泰文(th)、日文(ja)、韓文(ko)
         const allowedPrefixes = ['zh', 'en', 'th', 'ja', 'ko', 'yue']; 
         const filteredVoices = voices.filter(v => allowedPrefixes.some(prefix => v.lang.toLowerCase().startsWith(prefix)));
 
@@ -226,23 +213,16 @@
         let otherVoices = filteredVoices.filter(v => !(v.lang.toLowerCase().startsWith('zh') || v.lang.toLowerCase().startsWith('yue')));
 
         let top5Zh = [];
-
-        // 輔助函式：根據關鍵字撈取最佳聲音並從原陣列移除
         const extractVoice = (keywords) => {
             const idx = zhVoices.findIndex(v => keywords.some(kw => v.name.toLowerCase().includes(kw.toLowerCase())));
             if (idx !== -1) return zhVoices.splice(idx, 1)[0];
             return null;
         };
 
-        // 1. 優先抓取最高階女聲 (Siri/iOS, 曉曉/Windows)
         const v1 = extractVoice(['siri', 'mei-jia', 'xiaoxiao']); 
-        // 2. 抓取次佳女聲或柔和女聲
         const v2 = extractVoice(['yating', 'ting-ting', 'female', '女']);
-        // 3. 抓取男聲
         const v3 = extractVoice(['yunxi', 'yunjian', 'male', '男']);
-        // 4. 抓取台灣口音備用
         const v4 = extractVoice(['tw', 'taiwan']);
-        // 5. 抓取香港/廣東話口音備用
         const v5 = extractVoice(['hk', 'hongkong', 'yue']);
 
         if (v1) top5Zh.push({label: '語音樣式 1 (高階女聲)', voice: v1});
@@ -251,12 +231,10 @@
         if (v4) top5Zh.push({label: '語音樣式 4 (清亮女聲)', voice: v4});
         if (v5) top5Zh.push({label: '語音樣式 5 (粵/港腔調)', voice: v5});
 
-        // 如果設備本身湊不滿 5 個特性聲音，用剩下的中文聲音補滿 5 個選項
         while(top5Zh.length < 5 && zhVoices.length > 0) {
             top5Zh.push({label: `語音樣式 ${top5Zh.length + 1} (系統備用)`, voice: zhVoices.shift()});
         }
 
-        // 建立選單：精選中文 5 款
         if (top5Zh.length > 0) {
             const zhGroup = document.createElement('optgroup');
             zhGroup.label = "🤖 精選中文擬真語音 (5款)";
@@ -269,7 +247,6 @@
             voiceSelect.appendChild(zhGroup);
         }
 
-        // 建立選單：其他允許的語言 (英、泰、日、韓及剩下的中文)
         const combinedRemaining = [...zhVoices, ...otherVoices];
         if (combinedRemaining.length > 0) {
             const otherGroup = document.createElement('optgroup');
@@ -289,33 +266,58 @@
     }
     setTimeout(loadVoices, 500);
 
-    // 即時語速調整：拖動時更新數字
     speedRange.addEventListener('input', () => {
         speedValue.textContent = speedRange.value + 'x';
     });
 
-    // 即時語速調整：放開拖動時立刻套用並重讀該句
     speedRange.addEventListener('change', () => {
         if (synth.speaking && !synth.paused) {
-            isSpeedAdjusting = true; // 鎖定狀態避免觸發 onend 跳下一句
+            isSpeedAdjusting = true; 
             synth.cancel();
             setTimeout(() => {
                 speakSentence(currentSentenceIndex);
                 isSpeedAdjusting = false;
-            }, 50); // 給系統一點時間緩衝取消動作
+            }, 50); 
         }
     });
 
+    // 🏆 核心強化：泰式稱謂與情緒詞正則表達式攔截器
     function preprocessText(text) {
         let processedText = text;
+
+        // 1. 稱謂與前綴自動解壓縮
+        processedText = processedText.replace(/\bP'/gi, "Phi ");
+        processedText = processedText.replace(/\bN'/gi, "Nong ");
+        processedText = processedText.replace(/\bK'/gi, "Khun ");
+        processedText = processedText.replace(/\bAi'/gi, "Ai ");
+        processedText = processedText.replace(/\b[EI]'/gi, "Ee "); 
+
+        // 2. ★ 情緒詞與語氣詞「中文擬音」強制校正 (讓Siri念出靈魂) ★
+        processedText = processedText.replace(/\bAo[w]*\b/gi, "嗷");    // Ao, Aow -> 嗷
+        processedText = processedText.replace(/O~ho+/gi, "喔齁");       // 處理帶波浪號的 O~ho -> 喔齁
+        processedText = processedText.replace(/\bOho+\b/gi, "喔齁");    // 一般的 Oho -> 喔齁
+        processedText = processedText.replace(/\bO[iy]+\b/gi, "噢伊");  // Oi, Oii -> 噢伊
+        processedText = processedText.replace(/\bNa+\b/gi, "吶");       // Na, Naa -> 吶 (語氣輕聲)
+        processedText = processedText.replace(/\b[Jj]a+\b/gi, "佳");    // Ja, Jaa -> 佳
+        processedText = processedText.replace(/\b[Kk]h?a+\b/gi, "卡");  // Kha -> 卡
+        processedText = processedText.replace(/\bW[oe]i+\b/gi, "喂");   // Woi -> 喂
+        processedText = processedText.replace(/\b[Ee]uy+\b/gi, "欸");   // Euy -> 欸
+        
+        // 3. 常見泰百羅馬拼音髒話/俗語校正 (一樣用中文擬音輔助)
+        processedText = processedText.replace(/\bShia+\b/gi, "嚇");     // Shia -> 嚇 (發音近 hia，急促)
+        processedText = processedText.replace(/\bHia+\b/gi, "嚇"); 
+        processedText = processedText.replace(/\bS[ua]t+\b/gi, "薩");   // Sat -> 薩 (短促音)
+        processedText = processedText.replace(/\bMaeng+\b/gi, "曼");   // Maeng -> 曼 (較接近泰文發音)
+        
+        // 4. 原本的泰文原生字與固定單字字典替換
         for (const [thaiWord, phonetic] of Object.entries(thaiDictionary)) {
             const regex = new RegExp(thaiWord, "g");
             processedText = processedText.replace(regex, ` ${phonetic} `); 
         }
+        
         return processedText;
     }
 
-    // 中英泰體感勻速演算法
     function getDynamicRate(text, baseRate) {
         const englishMatch = text.match(/[a-zA-Z]/g);
         const englishCount = englishMatch ? englishMatch.length : 0;
@@ -368,7 +370,6 @@
         };
 
         utterance.onend = () => {
-            // 如果是因為拉動語速而被強行中斷的，就不跳下一句
             if (!isSpeedAdjusting) {
                 currentSentenceIndex++;
                 speakSentence(currentSentenceIndex);
