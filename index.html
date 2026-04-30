@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>文字朗讀助理 Pro (手機優化版)</title>
+    <title>Text-to-Speech Pro Assistant</title>
     <style>
         :root {
             --bg-color: #f5f5f7;
@@ -61,15 +61,10 @@
             height: 100%;
             max-height: 100%;
             box-sizing: border-box;
-            transition: background-color 0.3s;
         }
 
         @media (min-width: 600px) {
-            .container {
-                padding: 30px;
-                height: auto;
-                max-height: 90vh;
-            }
+            .container { padding: 30px; height: auto; max-height: 90vh; }
         }
 
         .text-area-container {
@@ -79,61 +74,30 @@
             border: 1px solid var(--border-color);
             border-radius: 8px;
             position: relative;
-            background-color: transparent;
         }
 
         textarea {
-            width: 100%;
-            height: 100%;
-            min-height: 200px;
-            padding: 15px;
-            border: none;
-            font-size: 16px;
-            resize: none;
-            box-sizing: border-box;
-            line-height: 1.8;
-            outline: none;
-            background-color: transparent;
-            color: var(--text-color);
+            width: 100%; height: 100%; min-height: 200px;
+            padding: 15px; border: none; font-size: 16px;
+            resize: none; box-sizing: border-box; line-height: 1.8;
+            outline: none; background-color: transparent; color: var(--text-color);
         }
 
         #readDisplay {
-            display: none;
-            padding: 15px;
-            font-size: 16px;
-            line-height: 1.8;
-            white-space: pre-wrap;
+            display: none; padding: 15px; font-size: 16px;
+            line-height: 1.8; white-space: pre-wrap;
         }
 
-        .sentence {
-            transition: background-color 0.2s;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+        .sentence { transition: background-color 0.2s; border-radius: 4px; cursor: pointer; }
+        .sentence:hover { background-color: var(--hover-bg); }
+        .active-sentence { background-color: var(--highlight-bg); }
 
-        .sentence:hover {
-            background-color: var(--hover-bg);
-        }
-
-        .active-sentence {
-            background-color: var(--highlight-bg); 
-        }
-
-        .controls-top {
-            display: flex;
-            width: 100%;
-            margin-bottom: 15px;
-        }
+        .controls-top { display: flex; width: 100%; margin-bottom: 15px; }
 
         select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 15px;
-            background-color: var(--container-bg);
-            color: var(--text-color);
-            outline: none;
+            width: 100%; padding: 12px 15px; border: 1px solid var(--border-color);
+            border-radius: 8px; font-size: 15px;
+            background-color: var(--container-bg); color: var(--text-color);
         }
 
         .controls-buttons {
@@ -144,28 +108,15 @@
         }
 
         button {
-            background-color: var(--btn-bg);
-            color: var(--btn-text);
-            border: none;
-            padding: 14px 8px; 
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
+            background-color: var(--btn-bg); color: var(--btn-text);
+            border: none; padding: 14px 8px; border-radius: 10px;
+            font-size: 15px; font-weight: 500; cursor: pointer;
             transition: background 0.2s, opacity 0.2s;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
         }
 
         button:active { transform: scale(0.98); }
-        button:hover { background-color: var(--btn-hover); }
-        button:disabled { 
-            background-color: var(--btn-disabled); 
-            color: #888;
-            cursor: not-allowed; 
-            transform: none;
-        }
+        button:disabled { background-color: var(--btn-disabled); color: #888; cursor: not-allowed; }
 
         #btnPlay { grid-column: 1 / 2; }
         #btnPause { grid-column: 2 / 3; }
@@ -174,59 +125,40 @@
         #btnEdit { grid-column: 3 / 4; }
 
         .slider-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            font-size: 14px;
-            margin-bottom: 15px;
-            background: var(--hover-bg); 
-            padding: 12px 15px;
-            border-radius: 10px;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; font-size: 14px; margin-bottom: 15px;
+            background: var(--hover-bg); padding: 12px 15px; border-radius: 10px;
         }
 
-        .slider-container label { white-space: nowrap; }
         input[type="range"] { flex: 1; margin: 0 10px; }
         #speedValue { width: 35px; text-align: right; font-weight: 500; }
 
-        .status {
-            font-size: 13px;
-            color: var(--status-color);
-            text-align: center;
-            padding-bottom: 5px;
-        }
+        .status { font-size: 13px; color: var(--status-color); text-align: center; padding-bottom: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2 style="margin-top: 0; margin-bottom: 15px; font-size: 22px;">文字朗讀助理 Pro</h2>
-    
     <div class="controls-top">
-        <select id="voiceSelect">
-            <option value="">載入語音模組中...</option>
-        </select>
+        <select id="voiceSelect"><option value="">載入中...</option></select>
     </div>
-
     <div class="text-area-container" id="textContainer">
-        <textarea id="textInput" placeholder="請在此貼上你想朗讀的文字（不限長短，中英泰皆可）..."></textarea>
+        <textarea id="textInput" placeholder="請在此貼上文字..."></textarea>
         <div id="readDisplay"></div>
     </div>
-    
     <div class="controls-buttons">
         <button id="btnPlay">播放/導讀</button>
         <button id="btnPause" disabled>暫停</button>
         <button id="btnResume" disabled>繼續</button>
-        <button id="btnRewind" disabled>回溯 (上一句)</button>
+        <button id="btnRewind" disabled>回溯</button>
         <button id="btnEdit">返回編輯</button>
     </div>
-
     <div class="slider-container">
-        <label for="speedRange">基準語速：</label>
+        <label>基準語速：</label>
         <input type="range" id="speedRange" min="0.5" max="3.0" step="0.1" value="1.3">
         <span id="speedValue">1.3x</span>
     </div>
-
     <div class="status" id="statusText">系統待命中...</div>
 </div>
 
@@ -237,287 +169,123 @@
     let currentSentenceIndex = 0;
     let isSpeedAdjusting = false; 
 
-    const thaiDictionary = {
-        "ครับ": "khrap", "ค่ะ": "kha", "คะ": "kha", "นะ": "na", 
-        "จ้ะ": "cha", "จ้า": "cha", "สิ": "si", "เถอะ": "thoe", 
-        "คุณ": "khun", "พี่": "Pi", "น้อง": "nong", "อาจารย์": "ajarn", 
-        "ครู": "khru", "หมอ": "mor", "เชฟ": "chef", 
-        "หลวงพี่": "luang Pi", "หลวงพ่อ": "luang pho", 
-        "ป้า": "pa", "ลุง": "lung", "ตา": "ta", "ยาย": "yai",
-        "โห": "oh-hoh", "อ้าว": "ao", "เฮ้ย": "hey", "ว้าว": "wao", "อุ๊ย": "ui",
-        "ไอ้เหี้ย": "ai hia", "สัส": "sat", "แม่ง": "maeng", "โคตร": "khot", 
-        "ชิบหาย": "chip hai", "กู": "ku", "มึง": "mueng",
-        "รัก": "rak", "คิดถึง": "khit thueng", "ชอบ": "chop", "อร่อย": "aroi", 
-        "ใช่": "chai", "ไม่": "mai", "โอเค": "o-ke", "ขอโทษ": "kho thot", "ขอบคุณ": "khop khun",
-        "ทำไม": "tham mai", "อะไร": "a-rai",
-        "jing": "jing", "ngong": "ngong", "mak": "mak", "su su": "su su"
+    const thaiDict = {
+        "ครับ": "khrap", "ค่ะ": "kha", "คะ": "kha", "นะ": "na", "คุณ": "khun", "พี่": "Pi", 
+        "เช夫": "chef", "หมอ": "mor", "รัก": "rak", "อร่อย": "aroi", "ขอโทษ": "kho thot"
     };
 
     const voiceSelect = document.getElementById('voiceSelect');
     const textInput = document.getElementById('textInput');
     const readDisplay = document.getElementById('readDisplay');
-    const btnPlay = document.getElementById('btnPlay');
-    const btnPause = document.getElementById('btnPause');
-    const btnResume = document.getElementById('btnResume');
-    const btnRewind = document.getElementById('btnRewind');
-    const btnEdit = document.getElementById('btnEdit');
     const speedRange = document.getElementById('speedRange');
-    const speedValue = document.getElementById('speedValue');
     const statusText = document.getElementById('statusText');
 
     function loadVoices() {
         voices = synth.getVoices();
         voiceSelect.innerHTML = '';
         
-        const allowedPrefixes = ['zh', 'en', 'th', 'ja', 'ko', 'yue']; 
-        const filteredVoices = voices.filter(v => allowedPrefixes.some(prefix => v.lang.toLowerCase().startsWith(prefix)));
+        const allowedLangs = ['zh-tw', 'zh-cn', 'zh-hk', 'yue', 'en-us', 'en-gb', 'th-th', 'ja-jp', 'ko-kr']; 
+        const filtered = voices.filter(v => allowedLangs.some(l => v.lang.toLowerCase().startsWith(l)));
 
-        let zhVoices = filteredVoices.filter(v => v.lang.toLowerCase().startsWith('zh') || v.lang.toLowerCase().startsWith('yue'));
-        let otherVoices = filteredVoices.filter(v => !(v.lang.toLowerCase().startsWith('zh') || v.lang.toLowerCase().startsWith('yue')));
+        let zh = filtered.filter(v => v.lang.toLowerCase().startsWith('zh') || v.lang.toLowerCase().startsWith('yue'));
+        let others = filtered.filter(v => !zh.includes(v));
 
-        let top5Zh = [];
-        const extractVoice = (keywords) => {
-            const idx = zhVoices.findIndex(v => keywords.some(kw => v.name.toLowerCase().includes(kw.toLowerCase())));
-            if (idx !== -1) return zhVoices.splice(idx, 1)[0];
-            return null;
+        let top5 = [];
+        const extract = (kws) => {
+            const idx = zh.findIndex(v => kws.some(kw => v.name.toLowerCase().includes(kw)));
+            return idx !== -1 ? zh.splice(idx, 1)[0] : null;
         };
 
-        // 絕對優先尋找 Siri，其次微軟，最後才拿美佳墊底
-        const v_siri = extractVoice(['siri']); 
-        const v_xiaoxiao = extractVoice(['xiaoxiao']);
-        const v_meijia = extractVoice(['mei-jia', 'meijia']);
-        
-        const v1 = v_siri || v_xiaoxiao || v_meijia;
-        const v2 = extractVoice(['yating', 'ting-ting', 'female', '女']);
-        const v3 = extractVoice(['yunxi', 'yunjian', 'male', '男']);
-        const v4 = extractVoice(['tw', 'taiwan']);
-        const v5 = extractVoice(['hk', 'hongkong', 'yue']);
+        const v1 = extract(['siri', 'xiaoxiao', 'google', 'mei-jia']);
+        const v2 = extract(['yating', 'ting-ting', 'female', '女']);
+        const v3 = extract(['yunxi', 'yunjian', 'male', '男']);
+        const v4 = extract(['tw', 'taiwan']);
+        const v5 = extract(['hk', 'hongkong', 'yue']);
 
-        if (v1) top5Zh.push({label: '語音樣式 1 (首選高階女聲)', voice: v1});
-        if (v2) top5Zh.push({label: '語音樣式 2 (標準女聲)', voice: v2});
-        if (v3) top5Zh.push({label: '語音樣式 3 (沉穩男聲)', voice: v3});
-        if (v4) top5Zh.push({label: '語音樣式 4 (清亮女聲)', voice: v4});
-        if (v5) top5Zh.push({label: '語音樣式 5 (粵/港腔調)', voice: v5});
+        [v1, v2, v3, v4, v5].forEach((v, i) => {
+            if (v) top5.push({label: `語音樣式 ${i+1}`, voice: v});
+        });
 
-        while(top5Zh.length < 5 && zhVoices.length > 0) {
-            top5Zh.push({label: `語音樣式 ${top5Zh.length + 1} (系統備用)`, voice: zhVoices.shift()});
-        }
+        const zhGroup = document.createElement('optgroup');
+        zhGroup.label = "精選中文擬真語音";
+        top5.forEach(item => {
+            const opt = document.createElement('option');
+            opt.textContent = `${item.label} - ${item.voice.name}`;
+            opt.value = item.voice.name;
+            zhGroup.appendChild(opt);
+        });
+        voiceSelect.appendChild(zhGroup);
 
-        if (top5Zh.length > 0) {
-            const zhGroup = document.createElement('optgroup');
-            zhGroup.label = "🤖 精選中文擬真語音 (5款)";
-            top5Zh.forEach(item => {
-                const option = document.createElement('option');
-                option.textContent = `${item.label} - ${item.voice.name}`;
-                option.value = item.voice.name;
-                zhGroup.appendChild(option);
-            });
-            voiceSelect.appendChild(zhGroup);
-        }
-
-        const combinedRemaining = [...zhVoices, ...otherVoices];
-        if (combinedRemaining.length > 0) {
-            const otherGroup = document.createElement('optgroup');
-            otherGroup.label = "🌍 其他支援語言 (英/泰/日/韓)";
-            combinedRemaining.forEach(voice => {
-                const option = document.createElement('option');
-                option.textContent = `${voice.name} (${voice.lang})`;
-                option.value = voice.name;
-                otherGroup.appendChild(option);
-            });
-            voiceSelect.appendChild(otherGroup);
-        }
+        const otherGroup = document.createElement('optgroup');
+        otherGroup.label = "支援外語 (純淨版)";
+        others.forEach(v => {
+            const opt = document.createElement('option');
+            opt.textContent = `${v.name} (${v.lang.split('-')[0].toUpperCase()})`;
+            opt.value = v.name;
+            otherGroup.appendChild(opt);
+        });
+        voiceSelect.appendChild(otherGroup);
     }
 
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = loadVoices;
-    }
+    speechSynthesis.onvoiceschanged = loadVoices;
     setTimeout(loadVoices, 500);
 
-    speedRange.addEventListener('input', () => {
-        speedValue.textContent = speedRange.value + 'x';
-    });
-
-    speedRange.addEventListener('change', () => {
+    speedRange.oninput = () => document.getElementById('speedValue').textContent = speedRange.value + 'x';
+    speedRange.onchange = () => {
         if (synth.speaking && !synth.paused) {
-            isSpeedAdjusting = true; 
-            synth.cancel();
-            setTimeout(() => {
-                speakSentence(currentSentenceIndex);
-                isSpeedAdjusting = false;
-            }, 50); 
+            isSpeedAdjusting = true; synth.cancel();
+            setTimeout(() => { speakSentence(currentSentenceIndex); isSpeedAdjusting = false; }, 50);
         }
-    });
+    };
 
-    function preprocessText(text) {
-        let processedText = text;
-
-        processedText = processedText.replace(/\bP'/gi, "Phi ");
-        processedText = processedText.replace(/\bN'/gi, "Nong ");
-        processedText = processedText.replace(/\bK'/gi, "Khun ");
-        processedText = processedText.replace(/\bAi'/gi, "Ai ");
-        processedText = processedText.replace(/\b[EI]'/gi, "Ee "); 
-
-        processedText = processedText.replace(/\bAo[w]*\b/gi, "嗷");    
-        processedText = processedText.replace(/O~ho+/gi, "喔齁");       
-        processedText = processedText.replace(/\bOho+\b/gi, "喔齁");    
-        processedText = processedText.replace(/\bO[iy]+\b/gi, "噢伊");  
-        processedText = processedText.replace(/\bNa+\b/gi, "吶");       
-        processedText = processedText.replace(/\b[Jj]a+\b/gi, "佳");    
-        processedText = processedText.replace(/\b[Kk]h?a+\b/gi, "卡");  
-        processedText = processedText.replace(/\bW[oe]i+\b/gi, "喂");   
-        processedText = processedText.replace(/\b[Ee]uy+\b/gi, "欸");   
-        
-        processedText = processedText.replace(/\bShia+\b/gi, "嚇");     
-        processedText = processedText.replace(/\bHia+\b/gi, "嚇"); 
-        processedText = processedText.replace(/\bS[ua]t+\b/gi, "薩");   
-        processedText = processedText.replace(/\bMaeng+\b/gi, "曼");   
-        
-        for (const [thaiWord, phonetic] of Object.entries(thaiDictionary)) {
-            const regex = new RegExp(thaiWord, "g");
-            processedText = processedText.replace(regex, ` ${phonetic} `); 
-        }
-
-        // 🚀 ★ 修正後的波浪號處理系統 ★
-        // 1. 如果英文字母中間夾著波浪號，把它轉成空白 (例如 O~K 變成 O K)
-        processedText = processedText.replace(/([a-zA-Z])[~～]+([a-zA-Z])/g, "$1 $2");
-        // 2. 把剩下的連續波浪號 (不管幾個)，通通合併成單一個刪節號，避免延遲太長或當機
-        processedText = processedText.replace(/[~～]+/g, "...");
-        
-        return processedText;
-    }
-
-    function getDynamicRate(text, baseRate) {
-        const englishMatch = text.match(/[a-zA-Z]/g);
-        const englishCount = englishMatch ? englishMatch.length : 0;
-        const totalLength = text.length || 1;
-        const englishRatio = englishCount / totalLength;
-
-        if (englishRatio > 0.2) {
-            const slowdownFactor = 1 - (Math.min(englishRatio, 1) * 0.2); 
-            return Math.max(0.5, baseRate * slowdownFactor);
-        }
-        return baseRate;
-    }
-
-    function highlightSentence(index) {
-        const spans = document.querySelectorAll('.sentence');
-        spans.forEach(span => span.classList.remove('active-sentence'));
-        if (spans[index]) {
-            spans[index].classList.add('active-sentence');
-            spans[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+    function preprocess(text) {
+        let p = text;
+        p = p.replace(/\bP'/gi, "Phi ").replace(/\bN'/gi, "Nong ").replace(/\bK'/gi, "Khun ").replace(/\bAi'/gi, "Ai ");
+        p = p.replace(/\bAo[w]*\b/gi, "嗷").replace(/O~ho+/gi, "喔齁").replace(/\bOho+\b/gi, "喔齁");
+        p = p.replace(/\bO[iy]+\b/gi, "噢伊").replace(/\bNa+\b/gi, "吶").replace(/\b[Jj]a+\b/gi, "佳");
+        p = p.replace(/\b[Kk]h?a+\b/gi, "卡").replace(/\bW[oe]i+\b/gi, "喂").replace(/\b[Ee]uy+\b/gi, "欸");
+        p = p.replace(/([a-zA-Z])[~～]+([a-zA-Z])/g, "$1 $2").replace(/[~～]+/g, "...");
+        for (const [k, v] of Object.entries(thaiDict)) p = p.replace(new RegExp(k, "g"), ` ${v} `);
+        return p;
     }
 
     function speakSentence(index) {
-        if (index < 0 || index >= sentencesRaw.length) {
-            statusText.textContent = "朗讀完畢。";
-            btnPause.disabled = true;
-            btnRewind.disabled = true;
-            return;
-        }
-        
+        if (index < 0 || index >= sentencesRaw.length) return statusText.textContent = "朗讀完畢。";
         synth.cancel();
-        highlightSentence(index);
+        const spans = document.querySelectorAll('.sentence');
+        spans.forEach(s => s.classList.remove('active-sentence'));
+        if (spans[index]) { spans[index].classList.add('active-sentence'); spans[index].scrollIntoView({ behavior: 'smooth', block: 'center' }); }
         
-        const rawText = sentencesRaw[index];
-        const textToSpeak = preprocessText(rawText);
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        
-        const selectedVoiceName = voiceSelect.value;
-        const voice = voices.find(v => v.name === selectedVoiceName);
-        if (voice) utterance.voice = voice;
-        
-        const baseRate = parseFloat(speedRange.value);
-        utterance.rate = getDynamicRate(textToSpeak, baseRate);
-        
-        utterance.onstart = () => {
-            statusText.textContent = `正在朗讀：第 ${index + 1} / ${sentencesRaw.length} 句 (動態語速: ${utterance.rate.toFixed(2)}x)`;
-            btnPause.disabled = false;
-            btnResume.disabled = true;
-            btnRewind.disabled = false;
-        };
+        const utt = new SpeechSynthesisUtterance(preprocess(sentencesRaw[index]));
+        const voice = voices.find(v => v.name === voiceSelect.value);
+        if (voice) utt.voice = voice;
+        utt.rate = parseFloat(speedRange.value);
 
-        utterance.onend = () => {
-            if (!isSpeedAdjusting) {
-                currentSentenceIndex++;
-                speakSentence(currentSentenceIndex);
-            }
-        };
-
-        utterance.onerror = (e) => {
-            if (e.error !== 'canceled') {
-                console.error('語音錯誤', e);
-            }
-        };
-
-        synth.speak(utterance);
+        utt.onstart = () => { statusText.textContent = `朗讀中：${index + 1} / ${sentencesRaw.length}`; };
+        utt.onend = () => { if (!isSpeedAdjusting) { currentSentenceIndex++; speakSentence(currentSentenceIndex); } };
+        synth.speak(utt);
     }
 
-    btnPlay.addEventListener('click', () => {
-        const text = textInput.value.trim();
-        if (!text) return alert("請先輸入文字。");
-
-        textInput.style.display = 'none';
-        readDisplay.style.display = 'block';
-        
-        sentencesRaw = text.match(/[^。！？.!?\n]+[。！？.!?\n]*/g) || [text];
-        
+    document.getElementById('btnPlay').onclick = () => {
+        const t = textInput.value.trim(); if (!t) return;
+        textInput.style.display = 'none'; readDisplay.style.display = 'block';
+        sentencesRaw = t.match(/[^。！？.!?\n]+[。！？.!?\n]*/g) || [t];
         readDisplay.innerHTML = '';
-        sentencesRaw.forEach((sentence, i) => {
+        sentencesRaw.forEach((s, i) => {
             const span = document.createElement('span');
-            span.className = 'sentence';
-            span.textContent = sentence;
-            span.onclick = () => {
-                currentSentenceIndex = i;
-                speakSentence(currentSentenceIndex);
-            };
+            span.className = 'sentence'; span.textContent = s;
+            span.onclick = () => { currentSentenceIndex = i; speakSentence(i); };
             readDisplay.appendChild(span);
         });
+        currentSentenceIndex = 0; speakSentence(0);
+        document.getElementById('btnPause').disabled = false;
+        document.getElementById('btnRewind').disabled = false;
+    };
 
-        currentSentenceIndex = 0;
-        speakSentence(currentSentenceIndex);
-        btnEdit.style.display = 'inline-block';
-    });
-
-    btnPause.addEventListener('click', () => {
-        if (synth.speaking) {
-            synth.pause();
-            btnPause.disabled = true;
-            btnResume.disabled = false;
-            statusText.textContent = "已暫停。";
-        }
-    });
-
-    btnResume.addEventListener('click', () => {
-        if (synth.paused) {
-            synth.resume();
-            btnPause.disabled = false;
-            btnResume.disabled = true;
-            statusText.textContent = `繼續朗讀：第 ${currentSentenceIndex + 1} / ${sentencesRaw.length} 句`;
-        }
-    });
-
-    btnRewind.addEventListener('click', () => {
-        if (sentencesRaw.length === 0) return;
-        currentSentenceIndex = Math.max(0, currentSentenceIndex - 1);
-        speakSentence(currentSentenceIndex);
-    });
-
-    btnEdit.addEventListener('click', () => {
-        synth.cancel();
-        textInput.style.display = 'block';
-        readDisplay.style.display = 'none';
-        btnPause.disabled = true;
-        btnResume.disabled = true;
-        btnRewind.disabled = true;
-        statusText.textContent = "已返回編輯模式。";
-    });
-
-    window.addEventListener('beforeunload', () => {
-        synth.cancel();
-    });
+    document.getElementById('btnPause').onclick = () => { synth.pause(); document.getElementById('btnResume').disabled = false; };
+    document.getElementById('btnResume').onclick = () => { synth.resume(); document.getElementById('btnResume').disabled = true; };
+    document.getElementById('btnRewind').onclick = () => { currentSentenceIndex = Math.max(0, currentSentenceIndex - 1); speakSentence(currentSentenceIndex); };
+    document.getElementById('btnEdit').onclick = () => { synth.cancel(); textInput.style.display = 'block'; readDisplay.style.display = 'none'; };
 </script>
-
 </body>
 </html>
