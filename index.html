@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>文字朗讀助理 Pro</title>
+    <title>Text-to-Speech Pro Assistant</title>
     <style>
         :root {
             --bg-color: #f5f5f7;
@@ -97,7 +97,6 @@
             background-color: var(--container-bg); color: var(--text-color);
         }
 
-        /* 影片中的 6 宮格按鈕排版 */
         .controls-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -176,7 +175,6 @@
     let sentencesRaw = [];
     let currentSentenceIndex = 0;
     
-    // ★ iOS 專用引擎喚醒鎖
     let audioUnlocked = false;
     function unlockSpeechEngine() {
         if (!audioUnlocked) {
@@ -198,7 +196,6 @@
     const speedRange = document.getElementById('speedRange');
     const statusText = document.getElementById('statusText');
 
-    // 按鈕群組
     const btnPlay = document.getElementById('btnPlay');
     const btnPause = document.getElementById('btnPause');
     const btnStop = document.getElementById('btnStop');
@@ -270,13 +267,22 @@
 
     function preprocess(text) {
         let p = text;
-        p = p.replace(/\bP'/gi, "Phi ").replace(/\bN'/gi, "Nong ").replace(/\bK'/gi, "Khun ").replace(/\bAi'/gi, "Ai ").replace(/\b[EI]'/gi, "Ee ");
+        
+        // ★ 升級版：同時攔截「直引號」與「彎引號」，確保不會漏抓
+        p = p.replace(/\bP['’]/gi, "Phi ").replace(/\bN['’]/gi, "Nong ").replace(/\bK['’]/gi, "Khun ").replace(/\bAi['’]/gi, "Ai ").replace(/\b[EI]['’]/gi, "Ee ");
+        
         p = p.replace(/\bAo[w]*\b/gi, "嗷").replace(/O~ho+/gi, "喔齁").replace(/\bOho+\b/gi, "喔齁");
         p = p.replace(/\bO[iy]+\b/gi, "噢伊").replace(/\bNa+\b/gi, "吶").replace(/\b[Jj]a+\b/gi, "佳");
         p = p.replace(/\b[Kk]h?a+\b/gi, "卡").replace(/\bW[oe]i+\b/gi, "喂").replace(/\b[Ee]uy+\b/gi, "欸");
         p = p.replace(/\bShia+\b/gi, "hia").replace(/\bMaeng+\b/gi, "maeng").replace(/\bW[oe]i+\b/gi, "woei").replace(/\bNgong\b/gi, "ngong");
         p = p.replace(/([a-zA-Z])[~～]+([a-zA-Z])/g, "$1 $2").replace(/[~～]+/g, "... ");
+        
         for (const [k, v] of Object.entries(thaiDict)) p = p.replace(new RegExp(k, "g"), ` ${v} `);
+        
+        // 🚀 ★ 終極標點符號靜音過濾器 ★ 
+        // 徹底刪除會讓 Siri 亂唸的對話框與引號 (不影響畫面顯示，只影響發音)
+        p = p.replace(/[「」『』""''“”‘’]/g, "");
+        
         return p;
     }
 
@@ -289,9 +295,8 @@
         return baseRate;
     }
 
-    // ★ 安全播放函數 (解決卡死 Bug)
     function safeSpeak(index) {
-        synth.cancel(); // 清空佇列
+        synth.cancel(); 
         if (index < 0 || index >= sentencesRaw.length) {
             statusText.textContent = "朗讀完畢。";
             btnPause.disabled = true; btnStop.disabled = true; btnRewind.disabled = true; btnResume.disabled = true;
@@ -302,7 +307,6 @@
         spans.forEach(s => s.classList.remove('active-sentence'));
         if (spans[index]) { spans[index].classList.add('active-sentence'); spans[index].scrollIntoView({ behavior: 'smooth', block: 'center' }); }
         
-        // 延遲 100ms 讓 iOS 緩衝，避免 cancel 後立刻 speak 導致引擎當機
         setTimeout(() => {
             const processed = preprocess(sentencesRaw[index]);
             const utt = new SpeechSynthesisUtterance(processed);
@@ -313,7 +317,6 @@
 
             utt.onstart = () => { statusText.textContent = `朗讀中：${index + 1} / ${sentencesRaw.length}`; };
             utt.onend = (e) => { 
-                // 防止被 cancel 觸發的 onend 影響
                 if (e.name !== 'cancel' && index === currentSentenceIndex) {
                     currentSentenceIndex++; 
                     safeSpeak(currentSentenceIndex); 
@@ -326,7 +329,7 @@
     }
 
     btnPlay.onclick = () => {
-        unlockSpeechEngine(); // 強制喚醒 iOS 引擎
+        unlockSpeechEngine(); 
         const t = textInput.value.trim(); if (!t) return;
         textInput.style.display = 'none'; readDisplay.style.display = 'block';
         
